@@ -140,13 +140,14 @@ jobs:
           fi
 
       # -----------------------------------------------------------------------
-      # Import GPG key for chart signing
+      # Import GPG key and export to legacy OpenPGP format for Helm signing
+      # helm package --keyring requires the old .gpg format, not KBX
       # -----------------------------------------------------------------------
       - name: Import GPG key
         run: |
-          echo "${{ secrets.GPG_KEYRING_BASE64 }}" | base64 -d > /tmp/keyring.gpg
-          gpg --import /tmp/keyring.gpg
-          rm /tmp/keyring.gpg
+          echo "${{ secrets.GPG_KEYRING_BASE64 }}" | base64 -d | gpg --import
+          # Export secret key to legacy binary OpenPGP format that Helm understands
+          gpg --export-secret-keys > /tmp/secring.gpg
 
       # -----------------------------------------------------------------------
       # Package and sign charts
@@ -159,7 +160,7 @@ jobs:
               --destination .cr-release-packages \
               --sign \
               --key "${{ secrets.GPG_KEY_NAME }}" \
-              --keyring ~/.gnupg/pubring.kbx
+              --keyring /tmp/secring.gpg
           done
 
       # -----------------------------------------------------------------------
