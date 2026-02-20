@@ -106,11 +106,16 @@ jobs:
       # -----------------------------------------------------------------------
       # Run helm-docs and commit updated README(s)
       # -----------------------------------------------------------------------
+      - name: Install helm-docs
+        run: |
+          HELM_DOCS_VERSION=1.14.2
+          wget -qO /tmp/helm-docs.tar.gz \
+            "https://github.com/norwoodj/helm-docs/releases/download/v${HELM_DOCS_VERSION}/helm-docs_${HELM_DOCS_VERSION}_Linux_x86_64.tar.gz"
+          tar -xzf /tmp/helm-docs.tar.gz -C /tmp helm-docs
+          sudo mv /tmp/helm-docs /usr/local/bin/helm-docs
+
       - name: Run helm-docs
-        uses: norwoodj/helm-docs-action@v1.14.2
-        with:
-          chart-search-root: charts
-          log-level: warning
+        run: helm-docs --chart-search-root charts --log-level warning
 
       # -----------------------------------------------------------------------
       # Generate values.schema.json
