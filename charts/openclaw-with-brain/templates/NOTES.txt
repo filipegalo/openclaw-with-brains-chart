@@ -1,0 +1,19 @@
+OpenClaw with Brain has been deployed!
+
+  Chart version: {{ .Chart.Version }}
+  App version:   {{ .Chart.AppVersion }}
+
+1. Wait for the pod to be ready:
+
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "openclaw-with-brain.name" . }},app.kubernetes.io/instance={{ .Release.Name }}
+
+2. Access the gateway:
+
+   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "openclaw-with-brain.fullname" . }} {{ .Values.gateway.port }}:{{ .Values.gateway.port }}
+
+   Then open http://localhost:{{ .Values.gateway.port }} and enter your Gateway Token.
+
+3. Approve the pairing request:
+
+   kubectl exec -n {{ .Release.Namespace }} deployment/{{ include "openclaw-with-brain.fullname" . }} -- node dist/index.js devices list
+   kubectl exec -n {{ .Release.Namespace }} deployment/{{ include "openclaw-with-brain.fullname" . }} -- node dist/index.js devices approve <REQUEST_ID>

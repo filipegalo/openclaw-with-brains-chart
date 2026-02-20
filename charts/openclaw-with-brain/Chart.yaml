@@ -1,0 +1,25 @@
+apiVersion: v2
+name: openclaw-with-brain
+description: >
+  Helm chart for deploying OpenClaw with a git-backed brain repository.
+  Provides an AI agent gateway with bidirectional workspace and config
+  synchronisation, optional Chromium sidecar, GitHub CLI, and read-only
+  Kubernetes cluster access via ClusterRole.
+type: application
+version: 0.1.0
+appVersion: "2026.2.17"
+kubeVersion: ">=1.26.0-0"
+keywords:
+  - openclaw
+  - ai
+  - agent
+  - llm
+sources:
+  - https://github.com/filipegalo/openclaw-with-brains-chart
+maintainers:
+  - name: filipegalo
+    email: fcostagalo@gmail.com
+annotations:
+  artifacthub.io/changes: |
+    - kind: added
+      description: "Initial release"

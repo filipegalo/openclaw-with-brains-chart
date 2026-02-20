@@ -1,0 +1,43 @@
+repos:
+  # ---------------------------------------------------------------------------
+  # General file hygiene
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+        # Exclude Helm templates — they use Go template syntax that breaks YAML
+        exclude: ^charts/.*/templates/
+
+  # ---------------------------------------------------------------------------
+  # YAML lint (non-template files only)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [-d, relaxed]
+        exclude: ^charts/.*/templates/
+
+  # ---------------------------------------------------------------------------
+  # Helm lint
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/gruntwork-io/pre-commit
+    rev: v0.1.23
+    hooks:
+      - id: helmlint
+
+  # ---------------------------------------------------------------------------
+  # helm-docs — keeps README.md in sync with values.yaml comments
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/norwoodj/helm-docs
+    rev: v1.14.2
+    hooks:
+      - id: helm-docs
+        args:
+          - --chart-search-root=charts
+          - --log-level=warning

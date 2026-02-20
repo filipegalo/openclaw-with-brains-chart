@@ -1,0 +1,148 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openclaw-with-brain.fullname" . }}-scripts
+  labels:
+    {{- include "openclaw-with-brain.labels" . | nindent 4 }}
+data:
+{{- if .Values.workspace.enabled }}
+  init-workspace.sh: |
+    #!/bin/sh
+    set -e
+    log() { echo "[$(date -Iseconds)] [init-workspace] $*"; }
+
+    log "Starting workspace initialization from git"
+
+    SSH_KEY="/tmp/tars-id_ed25519"
+    SSH_KNOWN_HOSTS="/tmp/tars-known_hosts"
+    cp /run/secrets/ssh/id_ed25519 "$SSH_KEY"
+    chmod 600 "$SSH_KEY"
+    # GitHub's official SSH host key (https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)
+    printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n' > "$SSH_KNOWN_HOSTS"
+    export GIT_SSH_COMMAND="ssh -i $SSH_KEY -o UserKnownHostsFile=$SSH_KNOWN_HOSTS -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes"
+
+    git config --global user.name "{{ .Values.workspace.gitUserName }}"
+    git config --global user.email "{{ .Values.workspace.gitUserEmail }}"
+
+    REPO="{{ .Values.workspace.repo }}"
+    BRANCH="{{ .Values.workspace.branch }}"
+    WORKSPACES_PATH="{{ .Values.workspace.path }}"
+    CONFIG_PATH="{{ .Values.workspace.configPath }}"
+    CLONE_DIR="/workspace-git/brain"
+
+    mkdir -p /home/node/.openclaw
+
+    # Clear any partial clone from a previous init container retry
+    rm -rf "$CLONE_DIR"
+    log "Cloning $REPO (branch: $BRANCH)"
+    git clone --depth=1 --branch "$BRANCH" "$REPO" "$CLONE_DIR"
+
+    # Restore openclaw.json from git
+    if [ -f "$CLONE_DIR/$CONFIG_PATH" ]; then
+      log "Restoring openclaw.json from $CONFIG_PATH"
+      cp "$CLONE_DIR/$CONFIG_PATH" /home/node/.openclaw/openclaw.json
+    else
+      log "WARNING: $CONFIG_PATH not found in repo — openclaw.json will be created fresh by the app"
+    fi
+
+    if [ ! -d "$CLONE_DIR/$WORKSPACES_PATH" ]; then
+      log "WARNING: '$WORKSPACES_PATH' not found in repo — skipping workspace population"
+      exit 0
+    fi
+
+    # Each subdir in the workspaces path maps to a local workspace:
+    #   main/ → ~/.openclaw/workspace
+    #   <id>/ → ~/.openclaw/workspace-<id>
+    for agent_dir in "$CLONE_DIR/$WORKSPACES_PATH"/*/; do
+      [ -d "$agent_dir" ] || continue
+      agent_id=$(basename "$agent_dir")
+      if [ "$agent_id" = "main" ]; then
+        target="/home/node/.openclaw/workspace"
+      else
+        target="/home/node/.openclaw/workspace-${agent_id}"
+      fi
+      log "Populating $target from $WORKSPACES_PATH/$agent_id"
+      mkdir -p "$target"
+      cp -r "${agent_dir}." "$target/"
+    done
+
+    # Allow uid 1000 (main container) to write into the workspace
+    chmod -R g+w /home/node/.openclaw/workspace* 2>/dev/null || true
+    log "Workspace initialization complete"
+
+  workspace-sync.sh: |
+    #!/bin/sh
+    log() { echo "[$(date -Iseconds)] [workspace-sync] $*"; }
+
+    CLONE_DIR="/workspace-git/brain"
+    WORKSPACES_PATH="{{ .Values.workspace.path }}"
+    CONFIG_PATH="{{ .Values.workspace.configPath }}"
+    BRANCH="{{ .Values.workspace.branch }}"
+    SYNC_INTERVAL="${SYNC_INTERVAL:-{{ .Values.workspace.syncInterval }}}"
+
+    SSH_KEY="/tmp/tars-id_ed25519"
+    SSH_KNOWN_HOSTS="/tmp/tars-known_hosts"
+    cp /run/secrets/ssh/id_ed25519 "$SSH_KEY"
+    chmod 600 "$SSH_KEY"
+    printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n' > "$SSH_KNOWN_HOSTS"
+    export GIT_SSH_COMMAND="ssh -i $SSH_KEY -o UserKnownHostsFile=$SSH_KNOWN_HOSTS -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes"
+
+    git config --global user.name "{{ .Values.workspace.gitUserName }}"
+    git config --global user.email "{{ .Values.workspace.gitUserEmail }}"
+
+    log "Starting sync loop (interval: ${SYNC_INTERVAL}s)"
+
+    while true; do
+      sleep "$SYNC_INTERVAL"
+      log "Running workspace sync"
+
+      if [ ! -d "$CLONE_DIR/.git" ]; then
+        log "ERROR: git clone missing at $CLONE_DIR — skipping"
+        continue
+      fi
+
+      # Sync openclaw.json → git clone
+      if [ -f "/home/node/.openclaw/openclaw.json" ]; then
+        mkdir -p "$(dirname "$CLONE_DIR/$CONFIG_PATH")"
+        cp /home/node/.openclaw/openclaw.json "$CLONE_DIR/$CONFIG_PATH"
+      fi
+
+      # Sync all workspace* dirs → git clone:
+      #   ~/.openclaw/workspace      → <path>/main/
+      #   ~/.openclaw/workspace-<id> → <path>/<id>/
+      for ws_dir in /home/node/.openclaw/workspace*/; do
+        [ -d "$ws_dir" ] || continue
+        ws_name=$(basename "$ws_dir")
+        if [ "$ws_name" = "workspace" ]; then
+          agent_id="main"
+        else
+          agent_id="${ws_name#workspace-}"
+        fi
+        target="$CLONE_DIR/$WORKSPACES_PATH/$agent_id"
+        mkdir -p "$target"
+        cp -r "${ws_dir}." "$target/"
+      done
+
+      cd "$CLONE_DIR"
+
+      # Fetch + fast-forward (works correctly with shallow clones)
+      git fetch --depth=1 origin "$BRANCH" 2>/dev/null || log "WARNING: fetch failed"
+      git merge --ff-only origin/"$BRANCH" 2>/dev/null || log "WARNING: diverged from remote — local changes take priority"
+
+      git add "$WORKSPACES_PATH" "$CONFIG_PATH"
+
+      if git diff --cached --quiet; then
+        log "No changes to push"
+        continue
+      fi
+
+      git commit -m "chore: sync from tars [$(date -Iseconds)]"
+
+      if git push origin "$BRANCH"; then
+        log "Push successful"
+      else
+        log "WARNING: push failed — reverting commit (will retry next cycle)"
+        git reset HEAD~1
+      fi
+    done
+{{- end }}

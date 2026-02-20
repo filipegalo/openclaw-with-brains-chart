@@ -1,0 +1,31 @@
+name: Helm Docs
+
+on:
+  pull_request:
+    paths:
+      - "charts/**/values.yaml"
+      - "charts/**/Chart.yaml"
+      - ".github/workflows/helm-docs.yml"
+
+jobs:
+  helm-docs:
+    name: Check helm-docs are up to date
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run helm-docs
+        uses: norwoodj/helm-docs-action@v1.14.2
+        with:
+          chart-search-root: charts
+          log-level: warning
+
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code; then
+            echo ""
+            echo "ERROR: helm-docs generated changes that were not committed."
+            echo "Run 'helm-docs --chart-search-root charts' locally and commit the result."
+            exit 1
+          fi

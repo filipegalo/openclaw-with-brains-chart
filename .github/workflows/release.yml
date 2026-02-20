@@ -1,0 +1,184 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/**"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  release:
+    name: Release charts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: latest
+
+      # -----------------------------------------------------------------------
+      # Auto-bump patch version if a release tag already exists for this chart
+      # -----------------------------------------------------------------------
+      - name: Bump patch version if tag exists
+        id: bump
+        run: |
+          for chart_dir in charts/*/; do
+            chart_name=$(basename "$chart_dir")
+            current_version=$(grep '^version:' "$chart_dir/Chart.yaml" | awk '{print $2}')
+            tag="${chart_name}-${current_version}"
+
+            if git tag --list | grep -q "^${tag}$"; then
+              echo "Tag ${tag} already exists — bumping patch version"
+              IFS='.' read -r major minor patch <<< "$current_version"
+              new_version="${major}.${minor}.$((patch + 1))"
+              sed -i "s/^version: .*/version: ${new_version}/" "$chart_dir/Chart.yaml"
+              echo "Bumped ${chart_name}: ${current_version} → ${new_version}"
+            else
+              echo "Tag ${tag} does not exist — keeping version ${current_version}"
+            fi
+          done
+
+      # -----------------------------------------------------------------------
+      # Generate ArtifactHub changelog annotation
+      # -----------------------------------------------------------------------
+      - name: Generate ArtifactHub changelog
+        run: |
+          for chart_dir in charts/*/; do
+            chart_name=$(basename "$chart_dir")
+            chart_file="${chart_dir}/Chart.yaml"
+            version=$(grep '^version:' "$chart_file" | awk '{print $2}')
+            prev_tag=$(git tag --sort=-v:refname | grep "^${chart_name}-" | head -1)
+
+            if [ -n "$prev_tag" ]; then
+              log=$(git log "${prev_tag}..HEAD" --pretty=format:"- kind: changed%n  description: \"%s\"" -- "$chart_dir" | head -20)
+            else
+              log="- kind: added\n  description: \"Initial release\""
+            fi
+
+            # Inject/replace the artifacthub.io/changes annotation
+            python3 - "$chart_file" "$log" <<'PYEOF'
+          import sys, re
+
+          chart_file = sys.argv[1]
+          changelog  = sys.argv[2]
+
+          with open(chart_file) as f:
+              content = f.read()
+
+          annotation = f"  artifacthub.io/changes: |\n"
+          for line in changelog.splitlines():
+              annotation += f"    {line}\n"
+
+          # Replace existing annotation block or append
+          pattern = r'  artifacthub\.io/changes:.*?(?=\n  [^\s]|\Z)'
+          if re.search(pattern, content, re.DOTALL):
+              content = re.sub(pattern, annotation.rstrip(), content, flags=re.DOTALL)
+          else:
+              if 'annotations:' in content:
+                  content = content.rstrip() + '\n' + annotation
+              else:
+                  content = content.rstrip() + '\nannotations:\n' + annotation
+
+          with open(chart_file, 'w') as f:
+              f.write(content)
+
+          print(f"Updated changelog annotation in {chart_file}")
+          PYEOF
+          done
+
+      # -----------------------------------------------------------------------
+      # Run helm-docs and commit updated README(s)
+      # -----------------------------------------------------------------------
+      - name: Run helm-docs
+        uses: norwoodj/helm-docs-action@v1.14.2
+        with:
+          chart-search-root: charts
+          log-level: warning
+
+      # -----------------------------------------------------------------------
+      # Generate values.schema.json
+      # -----------------------------------------------------------------------
+      - name: Generate values schema
+        uses: losisin/helm-values-schema-json-action@v2
+        with:
+          input: charts/openclaw-with-brain/values.yaml
+          output: charts/openclaw-with-brain/values.schema.json
+
+      # -----------------------------------------------------------------------
+      # Commit Chart.yaml + README + values.schema.json back to main
+      # -----------------------------------------------------------------------
+      - name: Commit generated files
+        run: |
+          git add charts/*/Chart.yaml charts/*/README.md charts/*/values.schema.json
+          if git diff --cached --quiet; then
+            echo "No generated file changes to commit"
+          else
+            git commit -m "chore: update generated chart files [skip ci]"
+            git push origin main
+          fi
+
+      # -----------------------------------------------------------------------
+      # Import GPG key for chart signing
+      # -----------------------------------------------------------------------
+      - name: Import GPG key
+        run: |
+          echo "${{ secrets.GPG_KEYRING_BASE64 }}" | base64 -d > /tmp/keyring.gpg
+          gpg --import /tmp/keyring.gpg
+          rm /tmp/keyring.gpg
+
+      # -----------------------------------------------------------------------
+      # Package and sign charts
+      # -----------------------------------------------------------------------
+      - name: Package charts
+        run: |
+          mkdir -p .cr-release-packages
+          for chart_dir in charts/*/; do
+            helm package "$chart_dir" \
+              --destination .cr-release-packages \
+              --sign \
+              --key "${{ secrets.GPG_KEY_NAME }}" \
+              --keyring ~/.gnupg/pubring.kbx
+          done
+
+      # -----------------------------------------------------------------------
+      # Publish via chart-releaser (GitHub Pages)
+      # -----------------------------------------------------------------------
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.7.0
+        with:
+          skip_packaging: true
+          packages_with_index: true
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------------------------------------
+      # Push OCI image to GHCR
+      # -----------------------------------------------------------------------
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            --username ${{ github.actor }} \
+            --password-stdin
+
+      - name: Push charts to GHCR
+        run: |
+          for pkg in .cr-release-packages/*.tgz; do
+            helm push "$pkg" oci://ghcr.io/${{ github.repository_owner }}
+          done

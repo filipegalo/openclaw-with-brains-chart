@@ -1,0 +1,269 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openclaw-with-brain.fullname" . }}
+  labels:
+    {{- include "openclaw-with-brain.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 3
+  strategy:
+    type: {{ .Values.strategy }}
+  selector:
+    matchLabels:
+      {{- include "openclaw-with-brain.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/scripts: {{ include (print $.Template.BasePath "/configmap-scripts.yaml") . | sha256sum }}
+      labels:
+        {{- include "openclaw-with-brain.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "openclaw-with-brain.fullname" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        {{- if .Values.workspace.enabled }}
+        - name: init-workspace
+          image: "{{ .Values.workspace.image.repository }}:{{ .Values.workspace.image.tag }}"
+          command: ["sh", "/scripts/init-workspace.sh"]
+          env:
+            - name: HOME
+              value: /workspace-ssh
+          securityContext:
+            {{- toYaml .Values.workspace.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.workspace.resources | nindent 12 }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: workspace-git
+              mountPath: /workspace-git
+            - name: workspace-ssh
+              mountPath: /workspace-ssh
+            - name: brain-ssh-key
+              mountPath: /run/secrets/ssh
+              readOnly: true
+            - name: data
+              mountPath: /home/node/.openclaw
+        {{- end }}
+
+        {{- if or .Values.kubectlIntegration.enabled .Values.githubIntegration.enabled }}
+        - name: init-tools
+          image: "{{ .Values.tools.image.repository }}:{{ .Values.tools.image.tag }}"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              {{- if .Values.kubectlIntegration.enabled }}
+              echo "Installing kubectl..."
+              KUBECTL_VER=$(wget -qO- https://dl.k8s.io/release/stable.txt)
+              wget -qO /tools/kubectl "https://dl.k8s.io/release/${KUBECTL_VER}/bin/linux/amd64/kubectl"
+              chmod +x /tools/kubectl
+              echo "kubectl ${KUBECTL_VER} installed"
+              {{- end }}
+              {{- if .Values.githubIntegration.enabled }}
+              echo "Installing gh..."
+              GH_VER=$(wget -qO- "https://api.github.com/repos/cli/cli/releases/latest" | grep '"tag_name"' | head -1 | cut -d'"' -f4 | cut -c2-)
+              wget -qO /tmp/gh.tar.gz "https://github.com/cli/cli/releases/download/v${GH_VER}/gh_${GH_VER}_linux_amd64.tar.gz"
+              tar -xzf /tmp/gh.tar.gz -C /tmp
+              cp /tmp/gh_*/bin/gh /tools/gh
+              chmod +x /tools/gh
+              echo "gh ${GH_VER} installed"
+              {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tools-bin
+              mountPath: /tools
+        {{- end }}
+
+
+      containers:
+        - name: main
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - node
+            - dist/index.js
+            - gateway
+            - --bind
+            - {{ .Values.gateway.bind }}
+            - --port
+            - {{ .Values.gateway.port | quote }}
+          {{- $envFrom := .Values.envFrom | default list }}
+          {{- if .Values.githubIntegration.enabled }}
+          {{- $envFrom = append $envFrom (dict "secretRef" (dict "name" .Values.githubIntegration.tokenSecret)) }}
+          {{- end }}
+          {{- if $envFrom }}
+          envFrom:
+            {{- toYaml $envFrom | nindent 12 }}
+          {{- end }}
+          env:
+            - name: PATH
+              value: "/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.port }}
+              protocol: TCP
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.probes.main.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.main.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.main.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.main.liveness.failureThreshold }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.probes.main.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.main.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.main.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.main.readiness.failureThreshold }}
+          startupProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.probes.main.startup.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.main.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.main.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.main.startup.failureThreshold }}
+          volumeMounts:
+            - name: tools-bin
+              mountPath: /tools
+              readOnly: true
+            - name: data
+              mountPath: /home/node/.openclaw
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.telegramAllowFrom }}
+            - name: credentials
+              mountPath: /home/node/.openclaw/credentials
+              readOnly: true
+            {{- end }}
+
+        {{- if .Values.chromium.enabled }}
+        - name: chromium
+          image: "{{ .Values.chromium.image.repository }}:{{ .Values.chromium.image.tag }}"
+          command:
+            - chromium-browser
+            - --headless
+            - --disable-gpu
+            - --no-sandbox
+            - --disable-dev-shm-usage
+            - --remote-debugging-address=0.0.0.0
+            - --remote-debugging-port={{ .Values.chromium.debugPort }}
+            - --user-data-dir=/tmp/chromium
+          env:
+            - name: XDG_CACHE_HOME
+              value: /tmp
+          securityContext:
+            {{- toYaml .Values.chromium.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.chromium.resources | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.chromium.debugPort }}
+            initialDelaySeconds: {{ .Values.probes.chromium.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.chromium.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.chromium.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.chromium.liveness.failureThreshold }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.chromium.debugPort }}
+            initialDelaySeconds: {{ .Values.probes.chromium.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.chromium.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.chromium.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.chromium.readiness.failureThreshold }}
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.chromium.debugPort }}
+            initialDelaySeconds: {{ .Values.probes.chromium.startup.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.chromium.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.chromium.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.chromium.startup.failureThreshold }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+        {{- end }}
+
+        {{- if .Values.workspace.enabled }}
+        - name: workspace-sync
+          image: "{{ .Values.workspace.image.repository }}:{{ .Values.workspace.image.tag }}"
+          command: ["sh", "/scripts/workspace-sync.sh"]
+          env:
+            - name: HOME
+              value: /workspace-ssh
+            - name: SYNC_INTERVAL
+              value: {{ .Values.workspace.syncInterval | quote }}
+          securityContext:
+            {{- toYaml .Values.workspace.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.workspace.resources | nindent 12 }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: workspace-git
+              mountPath: /workspace-git
+            - name: workspace-ssh
+              mountPath: /workspace-ssh
+            - name: brain-ssh-key
+              mountPath: /run/secrets/ssh
+              readOnly: true
+            - name: data
+              mountPath: /home/node/.openclaw
+              readOnly: true
+        {{- end }}
+
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "openclaw-with-brain.fullname" . }}-scripts
+            defaultMode: 0755
+        - name: tools-bin
+          emptyDir: {}
+        - name: data
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.telegramAllowFrom }}
+        - name: credentials
+          configMap:
+            name: {{ include "openclaw-with-brain.fullname" . }}-credentials
+        {{- end }}
+        {{- if .Values.workspace.enabled }}
+        - name: workspace-git
+          emptyDir: {}
+        - name: workspace-ssh
+          emptyDir: {}
+        - name: brain-ssh-key
+          secret:
+            secretName: {{ .Values.workspace.sshKeySecret }}
+            defaultMode: 0400
+        {{- end }}

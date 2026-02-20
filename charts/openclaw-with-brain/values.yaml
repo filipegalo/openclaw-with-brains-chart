@@ -1,0 +1,303 @@
+# -- Override the chart name used in resource names and labels.
+nameOverride: ""
+# -- Override the full resource name (overrides Release.Name + chart name).
+fullnameOverride: ""
+
+# ---------------------------------------------------------------------------
+# OpenClaw image
+# ---------------------------------------------------------------------------
+image:
+  # -- OpenClaw container image repository.
+  repository: ghcr.io/openclaw/openclaw
+  # -- OpenClaw container image tag.
+  tag: "2026.2.17"
+  # -- Image pull policy.
+  pullPolicy: IfNotPresent
+
+# ---------------------------------------------------------------------------
+# Tools init-container image (used to download kubectl and/or gh)
+# ---------------------------------------------------------------------------
+tools:
+  image:
+    # -- Alpine image used by the init-tools container to download binaries.
+    repository: alpine
+    # -- Alpine image tag.
+    tag: "3.21"
+
+# ---------------------------------------------------------------------------
+# kubectl integration
+# Downloads the latest stable kubectl binary and places it on PATH.
+# Requires a ClusterRole + ClusterRoleBinding (created automatically).
+# ---------------------------------------------------------------------------
+kubectlIntegration:
+  # -- Enable kubectl download and ClusterRole/Binding creation.
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# GitHub CLI integration
+# Downloads the latest gh binary and places it on PATH.
+# Authenticate via the GITHUB_TOKEN env var supplied by githubIntegration.tokenSecret.
+# ---------------------------------------------------------------------------
+githubIntegration:
+  # -- Enable gh CLI download.
+  enabled: true
+  # -- Name of the Kubernetes Secret containing a GITHUB_TOKEN field.
+  # @default -- tars-github-token
+  tokenSecret: tars-github-token
+
+# ---------------------------------------------------------------------------
+# Gateway
+# ---------------------------------------------------------------------------
+gateway:
+  # -- Network interface to bind. Use "lan" for cluster-internal access or
+  #    "0.0.0.0" to also expose outside the pod.
+  bind: lan
+  # -- Port the OpenClaw gateway listens on.
+  port: 18789
+
+# ---------------------------------------------------------------------------
+# Chromium sidecar (optional — enables browser automation)
+# ---------------------------------------------------------------------------
+chromium:
+  # -- Enable the headless Chromium sidecar.
+  enabled: false
+  # -- Remote debugging port exposed by Chromium.
+  debugPort: 9222
+  image:
+    repository: zenika/alpine-chrome
+    tag: "124"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ---------------------------------------------------------------------------
+# Deployment
+# ---------------------------------------------------------------------------
+# -- Number of replicas. Keep at 1 — the emptyDir data volume is not shared.
+replicaCount: 1
+# -- Deployment strategy. RollingUpdate is safe because volumes are emptyDir.
+strategy: RollingUpdate
+
+# ---------------------------------------------------------------------------
+# Pod security context
+# ---------------------------------------------------------------------------
+podSecurityContext:
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+# ---------------------------------------------------------------------------
+# Container security context (main OpenClaw container)
+# ---------------------------------------------------------------------------
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# ---------------------------------------------------------------------------
+# Resource requests and limits (main OpenClaw container)
+# ---------------------------------------------------------------------------
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# ---------------------------------------------------------------------------
+# Git-backed workspace
+# On pod start an init container clones the brain repo and populates:
+#   ~/.openclaw/openclaw.json      ← from workspace.configPath
+#   ~/.openclaw/workspace          ← from workspace.path/main/
+#   ~/.openclaw/workspace-<id>     ← from workspace.path/<id>/
+# A sidecar syncs changes back to Git every workspace.syncInterval seconds.
+# ---------------------------------------------------------------------------
+workspace:
+  # -- Enable git-backed workspace sync.
+  enabled: true
+  # -- SSH URL of the brain repository.
+  repo: git@github.com:filipegalo/brain.git
+  # -- Branch to clone and push to.
+  branch: main
+  # -- Path inside the repo whose subdirectories map to OpenClaw workspaces.
+  #    Subdirectory "main" maps to ~/.openclaw/workspace,
+  #    any other subdirectory <id> maps to ~/.openclaw/workspace-<id>.
+  path: TARS/workspaces
+  # -- Path inside the repo to openclaw.json (synced both ways).
+  configPath: TARS/openclaw.json
+  # -- How often (seconds) the sync sidecar commits and pushes changes.
+  syncInterval: 60
+  # -- Git committer name used by the sync sidecar.
+  gitUserName: "tars"
+  # -- Git committer email used by the sync sidecar.
+  gitUserEmail: "tars@filipegalo.dev"
+  # -- Name of the Kubernetes Secret containing the SSH private key.
+  #    The secret must have a field named "id_ed25519".
+  sshKeySecret: tars-ssh-key
+  image:
+    # -- alpine/git image used for init-workspace and workspace-sync containers.
+    repository: alpine/git
+    # -- alpine/git image tag.
+    tag: "2.47.2"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  securityContext:
+    # Must be false — git operations write to the working tree.
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 18789
+
+# ---------------------------------------------------------------------------
+# Health check probes
+# ---------------------------------------------------------------------------
+probes:
+  main:
+    liveness:
+      initialDelaySeconds: 30
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    startup:
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 5
+      failureThreshold: 30
+  chromium:
+    liveness:
+      initialDelaySeconds: 10
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 6
+    readiness:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    startup:
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 5
+      failureThreshold: 12
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
+
+# ---------------------------------------------------------------------------
+# Environment — secret references injected via envFrom
+# ---------------------------------------------------------------------------
+# -- List of envFrom sources (secretRef / configMapRef).
+# The tars-env-secret and tars-telegram-token secrets are mounted here.
+# Add additional secrets as needed.
+envFrom:
+  - secretRef:
+      name: tars-env-secret
+  - secretRef:
+      name: tars-telegram-token
+
+# ---------------------------------------------------------------------------
+# Telegram allowFrom list
+# When non-empty a ConfigMap is created and mounted at
+# ~/.openclaw/credentials/telegram-default-allowFrom.json so only the
+# listed Telegram sender IDs can interact with the bot.
+# ---------------------------------------------------------------------------
+# -- List of Telegram sender IDs allowed to interact with the bot.
+# Example: telegramAllowFrom: ["123456789"]
+telegramAllowFrom: []
+
+# ---------------------------------------------------------------------------
+# Additional environment variables for the main container
+# ---------------------------------------------------------------------------
+# -- Extra environment variables injected into the main container.
+env: []
+# - name: MY_VAR
+#   value: my-value
+
+# ---------------------------------------------------------------------------
+# Scheduling
+# ---------------------------------------------------------------------------
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# ---------------------------------------------------------------------------
+# Network Policy (optional)
+# ---------------------------------------------------------------------------
+networkPolicy:
+  # -- Enable the NetworkPolicy resource.
+  enabled: false
+  # -- Ingress rules. By default allows traffic from ingress-nginx namespace.
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 18789  # keep in sync with gateway.port
+  # -- Egress rules. DNS + external internet (blocks RFC-1918 private ranges).
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 100.64.0.0/10
