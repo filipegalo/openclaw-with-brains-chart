@@ -114,9 +114,7 @@
                     "type": "string"
                 },
                 "port": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 65535
+                    "type": "integer"
                 }
             }
         },
@@ -135,12 +133,7 @@
             "type": "object",
             "properties": {
                 "pullPolicy": {
-                    "type": "string",
-                    "enum": [
-                        "Always",
-                        "IfNotPresent",
-                        "Never"
-                    ]
+                    "type": "string"
                 },
                 "repository": {
                     "type": "string"
@@ -148,11 +141,10 @@
                 "tag": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "repository",
-                "tag"
-            ]
+            }
+        },
+        "imagePullSecrets": {
+            "type": "array"
         },
         "ingress": {
             "type": "object",
@@ -438,8 +430,7 @@
             }
         },
         "replicaCount": {
-            "type": "integer",
-            "minimum": 1
+            "type": "integer"
         },
         "resources": {
             "type": "object",
@@ -506,21 +497,12 @@
                     "type": "integer"
                 },
                 "type": {
-                    "type": "string",
-                    "enum": [
-                        "ClusterIP",
-                        "NodePort",
-                        "LoadBalancer"
-                    ]
+                    "type": "string"
                 }
             }
         },
         "strategy": {
-            "type": "string",
-            "enum": [
-                "RollingUpdate",
-                "Recreate"
-            ]
+            "type": "string"
         },
         "telegramAllowFrom": {
             "type": "array"
@@ -632,18 +614,8 @@
                     "type": "string"
                 },
                 "syncInterval": {
-                    "type": "integer",
-                    "minimum": 10
+                    "type": "integer"
                 }
-            },
-            "required": [
-                "repo"
-            ]
-        },
-        "imagePullSecrets": {
-            "type": "array",
-            "items": {
-                "type": "object"
             }
         }
     }
