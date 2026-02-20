@@ -16,10 +16,17 @@ spec:
     metadata:
       annotations:
         checksum/scripts: {{ include (print $.Template.BasePath "/configmap-scripts.yaml") . | sha256sum }}
+        {{- if .Values.telegramAllowFrom }}
+        checksum/credentials: {{ include (print $.Template.BasePath "/configmap-credentials.yaml") . | sha256sum }}
+        {{- end }}
       labels:
         {{- include "openclaw-with-brain.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "openclaw-with-brain.fullname" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -88,10 +95,20 @@ spec:
               echo "gh ${GH_VER} installed"
               {{- end }}
           securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
           volumeMounts:
             - name: tools-bin
               mountPath: /tools
@@ -239,6 +256,7 @@ spec:
             - name: data
               mountPath: /home/node/.openclaw
               readOnly: true
+      terminationGracePeriodSeconds: 90
         {{- end }}
 
       volumes:

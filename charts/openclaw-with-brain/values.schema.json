@@ -114,7 +114,9 @@
                     "type": "string"
                 },
                 "port": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535
                 }
             }
         },
@@ -133,7 +135,12 @@
             "type": "object",
             "properties": {
                 "pullPolicy": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "Always",
+                        "IfNotPresent",
+                        "Never"
+                    ]
                 },
                 "repository": {
                     "type": "string"
@@ -141,7 +148,11 @@
                 "tag": {
                     "type": "string"
                 }
-            }
+            },
+            "required": [
+                "repository",
+                "tag"
+            ]
         },
         "ingress": {
             "type": "object",
@@ -427,7 +438,8 @@
             }
         },
         "replicaCount": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1
         },
         "resources": {
             "type": "object",
@@ -494,12 +506,21 @@
                     "type": "integer"
                 },
                 "type": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "ClusterIP",
+                        "NodePort",
+                        "LoadBalancer"
+                    ]
                 }
             }
         },
         "strategy": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+                "RollingUpdate",
+                "Recreate"
+            ]
         },
         "telegramAllowFrom": {
             "type": "array"
@@ -611,8 +632,18 @@
                     "type": "string"
                 },
                 "syncInterval": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 10
                 }
+            },
+            "required": [
+                "repo"
+            ]
+        },
+        "imagePullSecrets": {
+            "type": "array",
+            "items": {
+                "type": "object"
             }
         }
     }

@@ -90,10 +90,15 @@ data:
     git config --global user.name "{{ .Values.workspace.gitUserName }}"
     git config --global user.email "{{ .Values.workspace.gitUserEmail }}"
 
+    STOP=0
+    trap 'log "Received SIGTERM — running final sync"; STOP=1' TERM INT
+
     log "Starting sync loop (interval: ${SYNC_INTERVAL}s)"
 
-    while true; do
-      sleep "$SYNC_INTERVAL"
+    while [ "$STOP" -eq 0 ]; do
+      sleep "$SYNC_INTERVAL" &
+      wait $! || true
+      [ "$STOP" -eq 1 ] && log "Final sync before shutdown"
       log "Running workspace sync"
 
       if [ ! -d "$CLONE_DIR/.git" ]; then
@@ -144,5 +149,7 @@ data:
         log "WARNING: push failed — reverting commit (will retry next cycle)"
         git reset HEAD~1
       fi
+
+      [ "$STOP" -eq 1 ] && { log "Shutdown complete"; exit 0; }
     done
 {{- end }}
