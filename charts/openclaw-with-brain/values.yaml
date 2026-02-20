@@ -3,6 +3,10 @@ nameOverride: ""
 # -- Override the full resource name (overrides Release.Name + chart name).
 fullnameOverride: ""
 
+# -- List of image pull secrets for private registries.
+imagePullSecrets: []
+# - name: my-registry-secret
+
 # ---------------------------------------------------------------------------
 # OpenClaw image
 # ---------------------------------------------------------------------------

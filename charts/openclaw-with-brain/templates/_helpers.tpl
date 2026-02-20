@@ -15,8 +15,12 @@
 {{- end -}}
 {{- end -}}
 
+{{- define "openclaw-with-brain.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{- define "openclaw-with-brain.labels" -}}
-helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+helm.sh/chart: {{ include "openclaw-with-brain.chart" . }}
 app.kubernetes.io/name: {{ include "openclaw-with-brain.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
