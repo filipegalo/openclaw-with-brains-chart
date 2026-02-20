@@ -13,8 +13,8 @@ data:
 
     log "Starting workspace initialization from git"
 
-    SSH_KEY="/tmp/tars-id_ed25519"
-    SSH_KNOWN_HOSTS="/tmp/tars-known_hosts"
+    SSH_KEY="/tmp/openclaw-id_ed25519"
+    SSH_KNOWN_HOSTS="/tmp/openclaw-known_hosts"
     cp /run/secrets/ssh/id_ed25519 "$SSH_KEY"
     chmod 600 "$SSH_KEY"
     # GitHub's official SSH host key (https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)
@@ -80,8 +80,8 @@ data:
     BRANCH="{{ .Values.workspace.branch }}"
     SYNC_INTERVAL="${SYNC_INTERVAL:-{{ .Values.workspace.syncInterval }}}"
 
-    SSH_KEY="/tmp/tars-id_ed25519"
-    SSH_KNOWN_HOSTS="/tmp/tars-known_hosts"
+    SSH_KEY="/tmp/openclaw-id_ed25519"
+    SSH_KNOWN_HOSTS="/tmp/openclaw-known_hosts"
     cp /run/secrets/ssh/id_ed25519 "$SSH_KEY"
     chmod 600 "$SSH_KEY"
     printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n' > "$SSH_KNOWN_HOSTS"
@@ -136,7 +136,7 @@ data:
         continue
       fi
 
-      git commit -m "chore: sync from tars [$(date -Iseconds)]"
+      git commit -m "chore: sync from openclaw [$(date -Iseconds)]"
 
       if git push origin "$BRANCH"; then
         log "Push successful"

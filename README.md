@@ -14,7 +14,7 @@ with a git-backed brain repository.
 ```bash
 helm repo add openclaw-with-brain https://filipegalo.github.io/openclaw-with-brains-chart
 helm repo update
-helm install tars openclaw-with-brain/openclaw-with-brain --namespace tars --create-namespace
+helm install openclaw openclaw-with-brain/openclaw-with-brain --namespace openclaw --create-namespace
 ```
 
 ## Development
