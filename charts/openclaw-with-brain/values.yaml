@@ -42,8 +42,7 @@ githubIntegration:
   # -- Enable gh CLI download.
   enabled: true
   # -- Name of the Kubernetes Secret containing a GITHUB_TOKEN field.
-  # @default -- tars-github-token
-  tokenSecret: tars-github-token
+  tokenSecret: openclaw-github-token
 
 # ---------------------------------------------------------------------------
 # Gateway
@@ -133,25 +132,25 @@ resources:
 workspace:
   # -- Enable git-backed workspace sync.
   enabled: true
-  # -- SSH URL of the brain repository.
-  repo: git@github.com:filipegalo/brain.git
+  # -- SSH URL of the brain repository. Required when workspace.enabled is true.
+  repo: ""
   # -- Branch to clone and push to.
   branch: main
   # -- Path inside the repo whose subdirectories map to OpenClaw workspaces.
   #    Subdirectory "main" maps to ~/.openclaw/workspace,
   #    any other subdirectory <id> maps to ~/.openclaw/workspace-<id>.
-  path: TARS/workspaces
+  path: workspaces
   # -- Path inside the repo to openclaw.json (synced both ways).
-  configPath: TARS/openclaw.json
+  configPath: openclaw.json
   # -- How often (seconds) the sync sidecar commits and pushes changes.
   syncInterval: 60
   # -- Git committer name used by the sync sidecar.
-  gitUserName: "tars"
+  gitUserName: "openclaw"
   # -- Git committer email used by the sync sidecar.
-  gitUserEmail: "tars@filipegalo.dev"
+  gitUserEmail: "openclaw@example.com"
   # -- Name of the Kubernetes Secret containing the SSH private key.
   #    The secret must have a field named "id_ed25519".
-  sshKeySecret: tars-ssh-key
+  sshKeySecret: openclaw-ssh-key
   image:
     # -- alpine/git image used for init-workspace and workspace-sync containers.
     repository: alpine/git
@@ -230,13 +229,12 @@ ingress:
 # Environment — secret references injected via envFrom
 # ---------------------------------------------------------------------------
 # -- List of envFrom sources (secretRef / configMapRef).
-# The tars-env-secret and tars-telegram-token secrets are mounted here.
-# Add additional secrets as needed.
+# Add secrets containing your API keys and bot tokens here.
 envFrom:
   - secretRef:
-      name: tars-env-secret
+      name: openclaw-env-secret
   - secretRef:
-      name: tars-telegram-token
+      name: openclaw-telegram-token
 
 # ---------------------------------------------------------------------------
 # Telegram allowFrom list

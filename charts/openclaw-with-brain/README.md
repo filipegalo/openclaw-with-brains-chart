@@ -4,6 +4,125 @@
 
 Helm chart for deploying OpenClaw with a git-backed brain repository. Provides an AI agent gateway with bidirectional workspace and config synchronisation, optional Chromium sidecar, GitHub CLI, and read-only Kubernetes cluster access via ClusterRole.
 
+## Prerequisites
+
+- Kubernetes ≥ 1.26
+- Helm ≥ 3.10
+- RBAC enabled on your cluster
+
+## Required Secrets
+
+All secrets must exist in the same namespace as the release before deploying.
+
+### `openclaw-env-secret`
+
+Core OpenClaw runtime configuration.
+
+```bash
+kubectl create secret generic openclaw-env-secret \
+  --namespace <namespace> \
+  --from-literal=OPENCLAW_GATEWAY_TOKEN=<your-gateway-token> \
+  --from-literal=ANTHROPIC_API_KEY=<your-anthropic-api-key>
+```
+
+| Key | Description |
+|-----|-------------|
+| `OPENCLAW_GATEWAY_TOKEN` | Token required to pair clients with the gateway |
+| `ANTHROPIC_API_KEY` | Anthropic API key used by OpenClaw agents |
+
+---
+
+### `openclaw-telegram-token`
+
+Telegram bot token (required if using Telegram integration).
+
+```bash
+kubectl create secret generic openclaw-telegram-token \
+  --namespace <namespace> \
+  --from-literal=TELEGRAM_BOT_TOKEN=<your-telegram-bot-token>
+```
+
+| Key | Description |
+|-----|-------------|
+| `TELEGRAM_BOT_TOKEN` | Bot token obtained from [@BotFather](https://t.me/BotFather) |
+
+---
+
+### `openclaw-ssh-key` *(required when `workspace.enabled: true`)*
+
+SSH private key used by the workspace init container and sync sidecar to
+clone and push to the brain repository. Must be an `ed25519` key authorised
+on the Git host for the account that owns the brain repo.
+
+```bash
+# Generate a new key (skip if you already have one)
+ssh-keygen -t ed25519 -C "openclaw@yourhost" -f openclaw-id_ed25519 -N ""
+
+# Create the secret
+kubectl create secret generic openclaw-ssh-key \
+  --namespace <namespace> \
+  --from-file=id_ed25519=./openclaw-id_ed25519
+```
+
+Add the **public key** as a deploy key with **write access** on the brain
+repository (GitHub: Settings → Deploy keys → Add deploy key).
+
+---
+
+### `openclaw-github-token` *(required when `githubIntegration.enabled: true`)*
+
+GitHub Personal Access Token injected as `GITHUB_TOKEN` so the `gh` CLI
+can authenticate without interactive login.
+
+Minimum required permissions for a fine-grained PAT:
+
+| Permission | Level |
+|-----------|-------|
+| Contents | Read & Write |
+| Pull requests | Read & Write |
+| Metadata | Read (always required) |
+
+```bash
+kubectl create secret generic openclaw-github-token \
+  --namespace <namespace> \
+  --from-literal=GITHUB_TOKEN=<your-github-pat>
+```
+
+---
+
+## Quick Start
+
+```bash
+helm repo add openclaw-with-brain https://filipegalo.github.io/openclaw-with-brains-chart
+helm repo update
+
+helm install openclaw openclaw-with-brain/openclaw-with-brain \
+  --namespace openclaw \
+  --create-namespace \
+  --set workspace.repo=git@github.com:<org>/<brain-repo>.git \
+  --set workspace.gitUserEmail=bot@example.com
+```
+
+## How Config Persistence Works
+
+```
+Pod start
+  └── init-workspace (alpine/git)
+        ├── git clone --depth=1 brain-repo → /workspace-git/brain
+        ├── cp brain/<configPath>   → ~/.openclaw/openclaw.json
+        └── cp brain/<path>/main/  → ~/.openclaw/workspace
+            cp brain/<path>/<id>/  → ~/.openclaw/workspace-<id>
+
+Runtime
+  └── workspace-sync sidecar (every syncInterval seconds)
+        ├── cp ~/.openclaw/openclaw.json → brain/<configPath>
+        ├── cp ~/.openclaw/workspace*    → brain/<path>/*
+        └── git commit + push origin <branch>
+```
+
+All configuration and workspace changes made by OpenClaw at runtime are
+committed back to the brain repository, surviving pod restarts.
+
 ## Maintainers
 
 | Name | Email | Url |
@@ -27,14 +146,14 @@ Kubernetes: `>=1.26.0-0`
 | chromium.debugPort | int | `9222` | Remote debugging port exposed by Chromium. |
 | chromium.enabled | bool | `false` | Enable the headless Chromium sidecar. |
 | env | list | `[]` | Extra environment variables injected into the main container. |
-| envFrom | list | `[{"secretRef":{"name":"tars-env-secret"}},{"secretRef":{"name":"tars-telegram-token"}}]` | List of envFrom sources (secretRef / configMapRef). The tars-env-secret and tars-telegram-token secrets are mounted here. Add additional secrets as needed. |
+| envFrom | list | `[{"secretRef":{"name":"openclaw-env-secret"}},{"secretRef":{"name":"openclaw-telegram-token"}}]` | List of envFrom sources (secretRef / configMapRef). Add secrets containing your API keys and bot tokens here. |
 | fullnameOverride | string | `""` | Override the full resource name (overrides Release.Name + chart name). |
 | gateway | object | `{"bind":"lan","port":18789}` | ------------------------------------------------------------------------- |
 | gateway.bind | string | `"lan"` | Network interface to bind. Use "lan" for cluster-internal access or    "0.0.0.0" to also expose outside the pod. |
 | gateway.port | int | `18789` | Port the OpenClaw gateway listens on. |
-| githubIntegration | object | `{"enabled":true,"tokenSecret":"tars-github-token"}` | ------------------------------------------------------------------------- |
+| githubIntegration | object | `{"enabled":true,"tokenSecret":"openclaw-github-token"}` | ------------------------------------------------------------------------- |
 | githubIntegration.enabled | bool | `true` | Enable gh CLI download. |
-| githubIntegration.tokenSecret | string | tars-github-token | Name of the Kubernetes Secret containing a GITHUB_TOKEN field. |
+| githubIntegration.tokenSecret | string | `"openclaw-github-token"` | Name of the Kubernetes Secret containing a GITHUB_TOKEN field. |
 | image | object | `{"pullPolicy":"IfNotPresent","repository":"ghcr.io/openclaw/openclaw","tag":"2026.2.17"}` | ------------------------------------------------------------------------- |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. |
 | image.repository | string | `"ghcr.io/openclaw/openclaw"` | OpenClaw container image repository. |
@@ -60,18 +179,20 @@ Kubernetes: `>=1.26.0-0`
 | tools | object | `{"image":{"repository":"alpine","tag":"3.21"}}` | ------------------------------------------------------------------------- |
 | tools.image.repository | string | `"alpine"` | Alpine image used by the init-tools container to download binaries. |
 | tools.image.tag | string | `"3.21"` | Alpine image tag. |
-| workspace | object | `{"branch":"main","configPath":"TARS/openclaw.json","enabled":true,"gitUserEmail":"tars@filipegalo.dev","gitUserName":"tars","image":{"repository":"alpine/git","tag":"2.47.2"},"path":"TARS/workspaces","repo":"git@github.com:filipegalo/brain.git","resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false},"sshKeySecret":"tars-ssh-key","syncInterval":60}` | ------------------------------------------------------------------------- |
+| workspace | object | `{"branch":"main","configPath":"openclaw.json","enabled":true,"gitUserEmail":"openclaw@example.com","gitUserName":"openclaw","image":{"repository":"alpine/git","tag":"2.47.2"},"path":"workspaces","repo":"","resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false},"sshKeySecret":"openclaw-ssh-key","syncInterval":60}` | ------------------------------------------------------------------------- |
 | workspace.branch | string | `"main"` | Branch to clone and push to. |
-| workspace.configPath | string | `"TARS/openclaw.json"` | Path inside the repo to openclaw.json (synced both ways). |
+| workspace.configPath | string | `"openclaw.json"` | Path inside the repo to openclaw.json (synced both ways). |
 | workspace.enabled | bool | `true` | Enable git-backed workspace sync. |
-| workspace.gitUserEmail | string | `"tars@filipegalo.dev"` | Git committer email used by the sync sidecar. |
-| workspace.gitUserName | string | `"tars"` | Git committer name used by the sync sidecar. |
+| workspace.gitUserEmail | string | `"openclaw@example.com"` | Git committer email used by the sync sidecar. |
+| workspace.gitUserName | string | `"openclaw"` | Git committer name used by the sync sidecar. |
 | workspace.image.repository | string | `"alpine/git"` | alpine/git image used for init-workspace and workspace-sync containers. |
 | workspace.image.tag | string | `"2.47.2"` | alpine/git image tag. |
-| workspace.path | string | `"TARS/workspaces"` | Path inside the repo whose subdirectories map to OpenClaw workspaces.    Subdirectory "main" maps to ~/.openclaw/workspace,    any other subdirectory <id> maps to ~/.openclaw/workspace-<id>. |
-| workspace.repo | string | `"git@github.com:filipegalo/brain.git"` | SSH URL of the brain repository. |
-| workspace.sshKeySecret | string | `"tars-ssh-key"` | Name of the Kubernetes Secret containing the SSH private key.    The secret must have a field named "id_ed25519". |
+| workspace.path | string | `"workspaces"` | Path inside the repo whose subdirectories map to OpenClaw workspaces.    Subdirectory "main" maps to ~/.openclaw/workspace,    any other subdirectory <id> maps to ~/.openclaw/workspace-<id>. |
+| workspace.repo | string | `""` | SSH URL of the brain repository. Required when workspace.enabled is true. |
+| workspace.sshKeySecret | string | `"openclaw-ssh-key"` | Name of the Kubernetes Secret containing the SSH private key.    The secret must have a field named "id_ed25519". |
 | workspace.syncInterval | int | `60` | How often (seconds) the sync sidecar commits and pushes changes. |
+
+---
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)
