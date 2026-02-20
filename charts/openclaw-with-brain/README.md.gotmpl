@@ -1,10 +1,38 @@
-{{ template "chart.header" . }}
+# 🦞 OpenClaw Helm Chart with 🧠
 
-{{ template "chart.deprecationWarning" . }}
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/openclaw-with-brain)](https://artifacthub.io/packages/helm/openclaw-with-brain/openclaw-with-brain)
+[![Helm 3](https://img.shields.io/badge/Helm-3-0F1689?logo=helm&logoColor=white)](https://helm.sh)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-%3E%3D1.26-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io)
+{{ template "chart.appVersionBadge" . }}
+{{ template "chart.versionBadge" . }}
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-{{ template "chart.badgesSection" . }}
+Deploys [OpenClaw](https://github.com/openclaw/openclaw) — an autonomous AI assistant — on Kubernetes, wired to a **git-backed brain repository** for persistent workspaces and configuration across pod restarts.
 
-{{ template "chart.description" . }}
+## Features
+
+- **Git-backed brain** — workspaces and `openclaw.json` are cloned from your repo on startup and synced back every minute
+- **`kubectl` on PATH** — read-only ClusterRole + ClusterRoleBinding created automatically so OpenClaw can inspect your cluster
+- **`gh` CLI on PATH** — GitHub CLI injected via PAT token for repository operations
+- **Headless Chromium** — optional sidecar for browser automation tasks
+- **Hardened security** — non-root (UID 1000), read-only root filesystem, all capabilities dropped
+
+## Architecture
+
+Single-instance deployment. Horizontal scaling is not supported — the data volume is `emptyDir` and state lives in Git.
+
+| Component | Kind | Purpose |
+|-----------|------|---------|
+| `init-workspace` | Init container | Clones brain repo, restores config + workspaces |
+| `init-tools` | Init container | Downloads `kubectl` and/or `gh` binary |
+| `main` | Container | OpenClaw gateway (HTTP/WebSocket) |
+| `workspace-sync` | Sidecar | Commits and pushes changes back to brain repo |
+| `chromium` | Sidecar (optional) | Headless browser on port `9222` |
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| `18789` | HTTP/WebSocket | OpenClaw gateway |
+| `9222` | HTTP | Chromium remote debugging (optional) |
 
 ## Prerequisites
 
@@ -12,92 +40,49 @@
 - Helm ≥ 3.10
 - RBAC enabled on your cluster
 
-## Required Secrets
+## Installation
 
-All secrets must exist in the same namespace as the release before deploying.
-
-### `openclaw-env-secret`
-
-Core OpenClaw runtime configuration.
-
-```bash
-kubectl create secret generic openclaw-env-secret \
-  --namespace <namespace> \
-  --from-literal=OPENCLAW_GATEWAY_TOKEN=<your-gateway-token> \
-  --from-literal=ANTHROPIC_API_KEY=<your-anthropic-api-key>
-```
-
-| Key | Description |
-|-----|-------------|
-| `OPENCLAW_GATEWAY_TOKEN` | Token required to pair clients with the gateway |
-| `ANTHROPIC_API_KEY` | Anthropic API key used by OpenClaw agents |
-
----
-
-### `openclaw-telegram-token`
-
-Telegram bot token (required if using Telegram integration).
-
-```bash
-kubectl create secret generic openclaw-telegram-token \
-  --namespace <namespace> \
-  --from-literal=TELEGRAM_BOT_TOKEN=<your-telegram-bot-token>
-```
-
-| Key | Description |
-|-----|-------------|
-| `TELEGRAM_BOT_TOKEN` | Bot token obtained from [@BotFather](https://t.me/BotFather) |
-
----
-
-### `openclaw-ssh-key` *(required when `workspace.enabled: true`)*
-
-SSH private key used by the workspace init container and sync sidecar to
-clone and push to the brain repository. Must be an `ed25519` key authorised
-on the Git host for the account that owns the brain repo.
-
-```bash
-# Generate a new key (skip if you already have one)
-ssh-keygen -t ed25519 -C "openclaw@yourhost" -f openclaw-id_ed25519 -N ""
-
-# Create the secret
-kubectl create secret generic openclaw-ssh-key \
-  --namespace <namespace> \
-  --from-file=id_ed25519=./openclaw-id_ed25519
-```
-
-Add the **public key** as a deploy key with **write access** on the brain
-repository (GitHub: Settings → Deploy keys → Add deploy key).
-
----
-
-### `openclaw-github-token` *(required when `githubIntegration.enabled: true`)*
-
-GitHub Personal Access Token injected as `GITHUB_TOKEN` so the `gh` CLI
-can authenticate without interactive login.
-
-Minimum required permissions for a fine-grained PAT:
-
-| Permission | Level |
-|-----------|-------|
-| Contents | Read & Write |
-| Pull requests | Read & Write |
-| Metadata | Read (always required) |
-
-```bash
-kubectl create secret generic openclaw-github-token \
-  --namespace <namespace> \
-  --from-literal=GITHUB_TOKEN=<your-github-pat>
-```
-
----
-
-## Quick Start
+### 1. Add the Helm repository
 
 ```bash
 helm repo add openclaw-with-brain https://filipegalo.github.io/openclaw-with-brains-chart
 helm repo update
+```
 
+### 2. Create required secrets
+
+```bash
+NAMESPACE=openclaw
+kubectl create namespace $NAMESPACE
+
+# Core API keys
+kubectl create secret generic openclaw-env-secret \
+  --namespace $NAMESPACE \
+  --from-literal=OPENCLAW_GATEWAY_TOKEN=<your-gateway-token> \
+  --from-literal=ANTHROPIC_API_KEY=<your-anthropic-api-key>
+
+# Telegram bot (if using Telegram)
+kubectl create secret generic openclaw-telegram-token \
+  --namespace $NAMESPACE \
+  --from-literal=TELEGRAM_BOT_TOKEN=<your-bot-token>
+
+# SSH key for brain repo access (ed25519, must have write access)
+kubectl create secret generic openclaw-ssh-key \
+  --namespace $NAMESPACE \
+  --from-file=id_ed25519=./path/to/your/ed25519-key
+
+# GitHub PAT for gh CLI (if githubIntegration.enabled)
+kubectl create secret generic openclaw-github-token \
+  --namespace $NAMESPACE \
+  --from-literal=GITHUB_TOKEN=<your-github-pat>
+```
+
+> Add the **public key** as a deploy key with **write access** on your brain repository:
+> GitHub → Repository → Settings → Deploy keys → Add deploy key
+
+### 3. Install
+
+```bash
 helm install openclaw openclaw-with-brain/openclaw-with-brain \
   --namespace openclaw \
   --create-namespace \
@@ -105,25 +90,64 @@ helm install openclaw openclaw-with-brain/openclaw-with-brain \
   --set workspace.gitUserEmail=bot@example.com
 ```
 
-## How Config Persistence Works
+### 4. Pair your device
+
+```bash
+# Port-forward the gateway
+kubectl port-forward -n openclaw svc/openclaw-openclaw-with-brain 18789:18789
+
+# Open http://localhost:18789 and enter your Gateway Token, then approve:
+kubectl exec -n openclaw deployment/openclaw-openclaw-with-brain -- \
+  node dist/index.js devices list
+
+kubectl exec -n openclaw deployment/openclaw-openclaw-with-brain -- \
+  node dist/index.js devices approve <REQUEST_ID>
+```
+
+## How the Brain Sync Works
 
 ```
 Pod start
   └── init-workspace (alpine/git)
-        ├── git clone --depth=1 brain-repo → /workspace-git/brain
-        ├── cp brain/<configPath>   → ~/.openclaw/openclaw.json
-        └── cp brain/<path>/main/  → ~/.openclaw/workspace
-            cp brain/<path>/<id>/  → ~/.openclaw/workspace-<id>
+        ├── git clone --depth=1 <workspace.repo> → /workspace-git/brain
+        ├── brain/<configPath>  → ~/.openclaw/openclaw.json
+        └── brain/<path>/main/ → ~/.openclaw/workspace
+            brain/<path>/<id>/ → ~/.openclaw/workspace-<id>
 
-Runtime
-  └── workspace-sync sidecar (every syncInterval seconds)
-        ├── cp ~/.openclaw/openclaw.json → brain/<configPath>
-        ├── cp ~/.openclaw/workspace*    → brain/<path>/*
-        └── git commit + push origin <branch>
+Runtime (every syncInterval seconds)
+  └── workspace-sync sidecar
+        ├── ~/.openclaw/openclaw.json → brain/<configPath>
+        ├── ~/.openclaw/workspace*    → brain/<path>/*
+        └── git commit -m "chore: sync from openclaw [timestamp]"
+            git push origin <branch>
 ```
 
-All configuration and workspace changes made by OpenClaw at runtime are
-committed back to the brain repository, surviving pod restarts.
+All runtime changes — including config edits made by OpenClaw — are committed back to Git, surviving pod restarts and ArgoCD syncs.
+
+## Uninstall
+
+```bash
+helm uninstall openclaw --namespace openclaw
+```
+
+## Security
+
+- Runs as **UID/GID 1000**, non-root
+- **Read-only root filesystem** on all containers (except `workspace-sync` which writes to the git clone)
+- All Linux capabilities dropped
+- ClusterRole grants **read-only** access to cluster resources — **Secrets are excluded**
+
+<details>
+<summary>Network Policy (optional)</summary>
+
+Enable `networkPolicy.enabled: true` to apply a default-deny policy with explicit egress rules:
+
+- DNS (UDP/TCP 53) to `kube-system`
+- Public internet (blocks RFC-1918: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`)
+
+Add custom ingress/egress rules via `networkPolicy.ingress` and `networkPolicy.egress` in your values.
+
+</details>
 
 {{ template "chart.maintainersSection" . }}
 
