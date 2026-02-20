@@ -123,7 +123,7 @@ jobs:
       - name: Generate values schema
         uses: losisin/helm-values-schema-json-action@v2
         with:
-          input: charts/openclaw-with-brain/values.yaml
+          values: charts/openclaw-with-brain/values.yaml
           output: charts/openclaw-with-brain/values.schema.json
 
       # -----------------------------------------------------------------------
