@@ -4,7 +4,7 @@
 [![Helm 3](https://img.shields.io/badge/Helm-3-0F1689?logo=helm&logoColor=white)](https://helm.sh)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-%3E%3D1.26-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io)
 ![AppVersion: 2026.2.17](https://img.shields.io/badge/AppVersion-2026.2.17-informational?style=flat-square)
-![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square)
+![Version: 0.1.2](https://img.shields.io/badge/Version-0.1.2-informational?style=flat-square)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Deploys [OpenClaw](https://github.com/openclaw/openclaw) — an autonomous AI assistant — on Kubernetes, wired to a **git-backed brain repository** for persistent workspaces and configuration across pod restarts.
@@ -38,23 +38,23 @@ Single-instance deployment. Horizontal scaling is not supported — the data vol
 ┌──────────────────────────────────────────────────────────────────┐
 │  Pod                                                             │
 │                                                                  │
-│  ┌──────────────────┐   ┌──────────────────┐                     │
+│  ┌─────────────────┐   ┌─────────────────┐                      │
 │  │ init-workspace   │   │ init-tools       │   (init containers) │
-│  │ clones brain repo│   │ downloads kubectl│                     │
-│  │ restores config  │   │ and/or gh CLI    │                     │
-│  └────────┬─────────┘   └────────┬─────────┘                     │
-│           │                      │                               │
-│  ┌────────▼──────────────────────▼─────────┐                     │
-│  │              Shared Volumes             │                     │
-│  │  /home/node/.openclaw  (emptyDir: data) │                     │
-│  │  /tools                (emptyDir: tools)│                     │
-│  │  /workspace-git        (emptyDir: git)  │                     │
-│  └────────┬──────────────────────┬─────────┘                     │
-│           │                      │                               │
+│  │ clones brain repo│   │ downloads kubectl│                      │
+│  │ restores config  │   │ and/or gh CLI    │                      │
+│  └────────┬─────────┘   └────────┬─────────┘                      │
+│           │                      │                                │
+│  ┌────────▼──────────────────────▼─────────┐                      │
+│  │              Shared Volumes              │                      │
+│  │  /home/node/.openclaw  (emptyDir: data) │                      │
+│  │  /tools                (emptyDir: tools)│                      │
+│  │  /workspace-git        (emptyDir: git)  │                      │
+│  └────────┬──────────────────────┬─────────┘                      │
+│           │                      │                                │
 │  ┌────────▼─────────┐   ┌───────▼──────────┐  ┌────────────────┐ │
-│  │ main             │   │ workspace-sync   │  │ chromium       │ │
-│  │ OpenClaw gateway │   │ commits & pushes │  │ (optional)     │ │
-│  │ HTTP :18789      │   │ every 60s        │  │ CDP :9222      │ │
+│  │ main              │   │ workspace-sync   │  │ chromium       │ │
+│  │ OpenClaw gateway  │   │ commits & pushes │  │ (optional)     │ │
+│  │ HTTP :18789       │   │ every 60s        │  │ CDP :9222      │ │
 │  └──────────────────┘   └──────────────────┘  └────────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
 ```
