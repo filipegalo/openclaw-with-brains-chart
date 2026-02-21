@@ -164,7 +164,18 @@ jobs:
           done
 
       # -----------------------------------------------------------------------
-      # Ensure gh-pages branch exists (chart-releaser requires it)
+      # Install chart-releaser CLI
+      # -----------------------------------------------------------------------
+      - name: Install chart-releaser
+        run: |
+          CR_VERSION=1.6.1
+          wget -qO /tmp/cr.tar.gz \
+            "https://github.com/helm/chart-releaser/releases/download/v${CR_VERSION}/chart-releaser_${CR_VERSION}_linux_amd64.tar.gz"
+          tar -xzf /tmp/cr.tar.gz -C /tmp cr
+          sudo mv /tmp/cr /usr/local/bin/cr
+
+      # -----------------------------------------------------------------------
+      # Ensure gh-pages branch exists
       # -----------------------------------------------------------------------
       - name: Create gh-pages branch if missing
         run: |
@@ -180,14 +191,27 @@ jobs:
           fi
 
       # -----------------------------------------------------------------------
-      # Publish via chart-releaser (GitHub Pages)
+      # Upload chart packages as GitHub Releases
       # -----------------------------------------------------------------------
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
-        with:
-          skip_packaging: true
-        env:
-          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload charts to GitHub Releases
+        run: |
+          cr upload \
+            --owner "${{ github.repository_owner }}" \
+            --git-repo "${{ github.event.repository.name }}" \
+            --token "${{ secrets.GITHUB_TOKEN }}" \
+            --skip-existing
+
+      # -----------------------------------------------------------------------
+      # Update Helm index on gh-pages
+      # -----------------------------------------------------------------------
+      - name: Update index on gh-pages
+        run: |
+          cr index \
+            --owner "${{ github.repository_owner }}" \
+            --git-repo "${{ github.event.repository.name }}" \
+            --token "${{ secrets.GITHUB_TOKEN }}" \
+            --pages-branch gh-pages \
+            --push
 
       # -----------------------------------------------------------------------
       # Push OCI image to GHCR
