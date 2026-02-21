@@ -121,9 +121,6 @@
         "githubIntegration": {
             "type": "object",
             "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
                 "tokenSecret": {
                     "type": "string"
                 }
@@ -163,14 +160,6 @@
                 },
                 "tls": {
                     "type": "array"
-                }
-            }
-        },
-        "kubectlIntegration": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean"
                 }
             }
         },
@@ -522,6 +511,12 @@
                         "tag": {
                             "type": "string"
                         }
+                    }
+                },
+                "packages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 }
             }
