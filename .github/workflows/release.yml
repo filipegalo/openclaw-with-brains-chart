@@ -69,7 +69,7 @@ jobs:
             if [ -n "$prev_tag" ]; then
               log=$(git log "${prev_tag}..HEAD" --pretty=format:"- kind: changed%n  description: \"%s\"" -- "$chart_dir" | head -20)
             else
-              log="- kind: added\n  description: \"Initial release\""
+              log="$(printf '- kind: added\n  description: "Initial release"')"
             fi
 
             # Inject/replace the artifacthub.io/changes annotation
