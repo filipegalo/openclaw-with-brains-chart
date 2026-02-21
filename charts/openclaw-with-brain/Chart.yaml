@@ -6,7 +6,7 @@ description: >
   synchronisation, optional Chromium sidecar, GitHub CLI, and read-only
   Kubernetes cluster access via ClusterRole.
 type: application
-version: 0.1.11
+version: 0.1.12
 appVersion: "2026.2.17"
 kubeVersion: ">=1.26.0-0"
 keywords:
@@ -22,4 +22,4 @@ maintainers:
 annotations:
   artifacthub.io/changes: |
     - kind: changed
-      description: "docs: add Cluster Access section, update config examples for tools.packages"
+      description: "fix: correct ArtifactHub badge URL to openclaw-with-brain repository alias"
