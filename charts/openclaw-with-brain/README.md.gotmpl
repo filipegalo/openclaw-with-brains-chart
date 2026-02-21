@@ -25,10 +25,26 @@ Without the brain repo, OpenClaw works fine — but it forgets everything every 
 ## Features
 
 - **Git-backed brain** — workspaces and `openclaw.json` are cloned from your repo on startup and synced back every minute
-- **`kubectl` on PATH** — read-only ClusterRole + ClusterRoleBinding created automatically so OpenClaw can inspect your cluster
-- **`gh` CLI on PATH** — GitHub CLI injected via PAT token for repository operations
+- **Plug-in tools** — install any CLI tool (e.g. `kubectl`, `gh`) via `tools.packages`; binaries land on `PATH` inside the main container
 - **Headless Chromium** — optional sidecar for browser automation tasks
 - **Hardened security** — non-root (UID 1000), read-only root filesystem, all capabilities dropped
+
+## Cluster Access — OpenClaw as SRE
+
+When `kubectl` is included in `tools.packages`, the chart automatically creates a **ClusterRole** and **ClusterRoleBinding** that grant the pod's ServiceAccount **read-only** access to the cluster it is deployed on.
+
+This lets you use OpenClaw as a lightweight SRE assistant: it can inspect deployments, check pod logs, describe failing resources, query events, and reason about the cluster state — all without any manual RBAC setup on your part.
+
+```yaml
+tools:
+  packages:
+    - kubectl   # ← also creates ClusterRole + ClusterRoleBinding
+    - gh
+```
+
+The ClusterRole is intentionally scoped to read-only verbs (`get`, `list`, `watch`). **Secrets are excluded** — the agent can never read secret values from the cluster. It covers: Pods, Deployments, Services, Ingresses, Events, Nodes, Jobs, HPAs, CertManager, ExternalSecrets, ArgoCD, and more.
+
+This is entirely opt-in — if `kubectl` is not in `tools.packages`, no RBAC resources are created.
 
 ## Architecture
 
@@ -274,11 +290,11 @@ networkPolicy:
 
 Also note: if `workspace.enabled: true`, the sync sidecar needs SSH (port 22) egress. The default rules allow this for public IPs but not private ones.
 
-### kubectl integration without ClusterRole
+### kubectl RBAC creation fails
 
-**Scenario:** `kubectlIntegration.enabled: true` but the cluster uses a restrictive PodSecurityPolicy or admission controller that blocks ClusterRoleBinding creation.
-**Impact:** Helm install fails or kubectl commands return `Forbidden`.
-**Fix:** Either grant the Helm service account permission to create ClusterRoleBindings, or disable `kubectlIntegration.enabled` and create the RBAC resources manually.
+**Scenario:** `kubectl` is in `tools.packages` but the cluster uses a restrictive admission controller that blocks ClusterRoleBinding creation.
+**Impact:** Helm install fails or `kubectl` commands inside the pod return `Forbidden`.
+**Fix:** Either grant the Helm service account permission to create ClusterRoleBindings, or remove `kubectl` from `tools.packages` and create the RBAC resources manually.
 
 ### GitHub CLI auth failure
 
@@ -362,10 +378,8 @@ Add custom ingress/egress rules via `networkPolicy.ingress` and `networkPolicy.e
 ```yaml
 workspace:
   enabled: false
-kubectlIntegration:
-  enabled: false
-githubIntegration:
-  enabled: false
+tools:
+  packages: []
 chromium:
   enabled: false
 ```
@@ -380,11 +394,12 @@ workspace:
   syncInterval: 30
   gitUserEmail: openclaw@myorg.com
 
-kubectlIntegration:
-  enabled: true
+tools:
+  packages:
+    - kubectl   # read-only ClusterRole + ClusterRoleBinding created automatically
+    - gh        # GitHub CLI; mounts githubIntegration.tokenSecret
 
 githubIntegration:
-  enabled: true
   tokenSecret: openclaw-github-token
 
 chromium:
@@ -416,8 +431,8 @@ workspace:
 
 tools:
   image:
-    repository: registry.internal.com/alpine
-    tag: "3.21"
+    repository: registry.internal.com/homebrew/brew
+    tag: "latest"
 
 chromium:
   image:
