@@ -226,8 +226,22 @@ jobs:
             --owner "${{ github.repository_owner }}" \
             --git-repo "${{ github.event.repository.name }}" \
             --token "${{ secrets.GITHUB_TOKEN }}" \
-            --skip-existing \
-            --release-notes-file /tmp/release-notes.md
+            --skip-existing
+
+      # cr ignores --release-notes-file; use gh to set the body directly
+      - name: Update release notes body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for chart_dir in charts/*/; do
+            chart_name=$(basename "$chart_dir")
+            version=$(grep '^version:' "${chart_dir}/Chart.yaml" | awk '{print $2}')
+            tag="${chart_name}-${version}"
+            gh release edit "$tag" \
+              --repo "${{ github.repository }}" \
+              --notes-file /tmp/release-notes.md \
+              || echo "Warning: could not update notes for $tag"
+          done
 
       # -----------------------------------------------------------------------
       # Update Helm index on gh-pages
