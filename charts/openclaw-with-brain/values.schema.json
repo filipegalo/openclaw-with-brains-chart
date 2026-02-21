@@ -597,6 +597,12 @@
                         "capabilities": {
                             "type": "object",
                             "properties": {
+                                "add": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
                                 "drop": {
                                     "type": "array",
                                     "items": {
@@ -607,15 +613,6 @@
                         },
                         "readOnlyRootFilesystem": {
                             "type": "boolean"
-                        },
-                        "runAsGroup": {
-                            "type": "integer"
-                        },
-                        "runAsNonRoot": {
-                            "type": "boolean"
-                        },
-                        "runAsUser": {
-                            "type": "integer"
                         }
                     }
                 },
