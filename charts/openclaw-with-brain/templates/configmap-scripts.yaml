@@ -11,6 +11,11 @@ data:
     set -e
     log() { echo "[$(date -Iseconds)] [init-workspace] $*"; }
 
+    # SSH requires the current UID to exist in /etc/passwd
+    if ! getent passwd "$(id -u)" > /dev/null 2>&1; then
+      echo "git:x:$(id -u):$(id -g):git:/workspace-ssh:/bin/sh" >> /etc/passwd
+    fi
+
     log "Starting workspace initialization from git"
 
     SSH_KEY="/tmp/openclaw-id_ed25519"
@@ -73,6 +78,11 @@ data:
   workspace-sync.sh: |
     #!/bin/sh
     log() { echo "[$(date -Iseconds)] [workspace-sync] $*"; }
+
+    # SSH requires the current UID to exist in /etc/passwd
+    if ! getent passwd "$(id -u)" > /dev/null 2>&1; then
+      echo "git:x:$(id -u):$(id -g):git:/workspace-ssh:/bin/sh" >> /etc/passwd
+    fi
 
     CLONE_DIR="/workspace-git/brain"
     WORKSPACES_PATH="{{ .Values.workspace.path }}"
