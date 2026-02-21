@@ -34,30 +34,7 @@ Without the brain repo, OpenClaw works fine — but it forgets everything every 
 
 Single-instance deployment. Horizontal scaling is not supported — the data volume is `emptyDir` and state lives in Git.
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  Pod                                                             │
-│                                                                  │
-│  ┌─────────────────┐   ┌─────────────────┐                      │
-│  │ init-workspace   │   │ init-tools       │   (init containers) │
-│  │ clones brain repo│   │ downloads kubectl│                      │
-│  │ restores config  │   │ and/or gh CLI    │                      │
-│  └────────┬─────────┘   └────────┬─────────┘                      │
-│           │                      │                                │
-│  ┌────────▼──────────────────────▼─────────┐                      │
-│  │              Shared Volumes              │                      │
-│  │  /home/node/.openclaw  (emptyDir: data) │                      │
-│  │  /tools                (emptyDir: tools)│                      │
-│  │  /workspace-git        (emptyDir: git)  │                      │
-│  └────────┬──────────────────────┬─────────┘                      │
-│           │                      │                                │
-│  ┌────────▼─────────┐   ┌───────▼──────────┐  ┌────────────────┐ │
-│  │ main              │   │ workspace-sync   │  │ chromium       │ │
-│  │ OpenClaw gateway  │   │ commits & pushes │  │ (optional)     │ │
-│  │ HTTP :18789       │   │ every 60s        │  │ CDP :9222      │ │
-│  └──────────────────┘   └──────────────────┘  └────────────────┘ │
-└──────────────────────────────────────────────────────────────────┘
-```
+![Architecture](https://raw.githubusercontent.com/filipegalo/openclaw-with-brains-chart/main/charts/openclaw-with-brain/assets/arch.png)
 
 | Component | Kind | Purpose |
 |-----------|------|---------|
