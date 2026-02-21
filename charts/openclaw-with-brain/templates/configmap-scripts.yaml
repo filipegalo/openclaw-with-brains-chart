@@ -11,11 +11,6 @@ data:
     set -e
     log() { echo "[$(date -Iseconds)] [init-workspace] $*"; }
 
-    # SSH requires the current UID to exist in /etc/passwd
-    if ! getent passwd "$(id -u)" > /dev/null 2>&1; then
-      echo "git:x:$(id -u):$(id -g):git:/workspace-ssh:/bin/sh" >> /etc/passwd
-    fi
-
     log "Starting workspace initialization from git"
 
     SSH_KEY="/tmp/openclaw-id_ed25519"
@@ -71,18 +66,13 @@ data:
       cp -r "${agent_dir}." "$target/"
     done
 
-    # Allow uid 1000 (main container) to write into the workspace
-    chmod -R g+w /home/node/.openclaw/workspace* 2>/dev/null || true
+    # Allow uid 1000 (main container) to write into the entire .openclaw dir
+    chmod -R g+w /home/node/.openclaw 2>/dev/null || true
     log "Workspace initialization complete"
 
   workspace-sync.sh: |
     #!/bin/sh
     log() { echo "[$(date -Iseconds)] [workspace-sync] $*"; }
-
-    # SSH requires the current UID to exist in /etc/passwd
-    if ! getent passwd "$(id -u)" > /dev/null 2>&1; then
-      echo "git:x:$(id -u):$(id -g):git:/workspace-ssh:/bin/sh" >> /etc/passwd
-    fi
 
     CLONE_DIR="/workspace-git/brain"
     WORKSPACES_PATH="{{ .Values.workspace.path }}"

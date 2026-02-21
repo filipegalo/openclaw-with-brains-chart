@@ -168,15 +168,16 @@ workspace:
       cpu: 200m
       memory: 256Mi
   securityContext:
-    runAsUser: 1000
-    runAsGroup: 1000
-    runAsNonRoot: true
     # Must be false — git operations write to the working tree.
     readOnlyRootFilesystem: false
     allowPrivilegeEscalation: false
     capabilities:
       drop:
         - ALL
+      add:
+        # Allows root to read files owned by UID 1000 (main container)
+        # without needing to run as UID 1000 (which breaks SSH in alpine/git)
+        - DAC_READ_SEARCH
 
 # ---------------------------------------------------------------------------
 # Service
