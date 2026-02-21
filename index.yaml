@@ -4,6 +4,34 @@ entries:
   - annotations:
       artifacthub.io/changes: |-
         - kind: changed
+          description: "chore: trigger release workflow"
+    apiVersion: v2
+    appVersion: 2026.2.17
+    created: "2026-02-21T17:03:42.413894172Z"
+    description: 'Helm chart for deploying OpenClaw with a git-backed brain repository.
+      Provides an AI agent gateway with bidirectional workspace and config synchronisation,
+      optional Chromium sidecar, GitHub CLI, and read-only Kubernetes cluster access
+      via ClusterRole. '
+    digest: 18746a87149e73bbf2cc7cf2b89defd2f9f92a4e4a1be6e422044a8129bda8a1
+    keywords:
+    - openclaw
+    - ai
+    - agent
+    - llm
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - email: fcostagalo@gmail.com
+      name: filipegalo
+    name: openclaw-with-brain
+    sources:
+    - https://github.com/filipegalo/openclaw-with-brains-chart
+    type: application
+    urls:
+    - https://github.com/filipegalo/openclaw-with-brains-chart/releases/download/openclaw-with-brain-0.1.6/openclaw-with-brain-0.1.6.tgz
+    version: 0.1.6
+  - annotations:
+      artifacthub.io/changes: |-
+        - kind: changed
           description: "fix: add UID 1000 to /etc/passwd so SSH works in alpine/git containers"
     apiVersion: v2
     appVersion: 2026.2.17
@@ -141,4 +169,4 @@ entries:
     urls:
     - openclaw-with-brain-0.1.0.tgz
     version: 0.1.0
-generated: "2026-02-21T16:43:18.198070648Z"
+generated: "2026-02-21T17:03:42.413920852Z"
