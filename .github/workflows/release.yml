@@ -191,6 +191,33 @@ jobs:
           fi
 
       # -----------------------------------------------------------------------
+      # Generate release notes from git log since previous tag
+      # Skips auto-generated commits (helm-docs, schema, sync)
+      # -----------------------------------------------------------------------
+      - name: Generate release notes
+        run: |
+          for chart_dir in charts/*/; do
+            chart_name=$(basename "$chart_dir")
+            prev_tag=$(git tag --sort=-v:refname | grep "^${chart_name}-" | head -1)
+
+            {
+              if [ -n "$prev_tag" ]; then
+                echo "## What's Changed"
+                echo ""
+                git log "${prev_tag}..HEAD" \
+                  --pretty=format:"- %s" \
+                  | grep -v "chore: update generated chart files" \
+                  | grep -v "chore: sync from" \
+                  || true
+                echo ""
+                echo "**Full Changelog:** https://github.com/${{ github.repository }}/compare/${prev_tag}...HEAD"
+              else
+                echo "Initial release."
+              fi
+            } > /tmp/release-notes.md
+          done
+
+      # -----------------------------------------------------------------------
       # Upload chart packages as GitHub Releases
       # -----------------------------------------------------------------------
       - name: Upload charts to GitHub Releases
@@ -199,7 +226,8 @@ jobs:
             --owner "${{ github.repository_owner }}" \
             --git-repo "${{ github.event.repository.name }}" \
             --token "${{ secrets.GITHUB_TOKEN }}" \
-            --skip-existing
+            --skip-existing \
+            --release-notes-file /tmp/release-notes.md
 
       # -----------------------------------------------------------------------
       # Update Helm index on gh-pages
