@@ -81,16 +81,38 @@ spec:
             - -c
             - |
               set -e
-              brew install --quiet $TOOLS
+              mkdir -p /tools/lib
+
+              # patchelf is needed to relink binaries
+              brew install --quiet patchelf $TOOLS
+
               for tool in $TOOLS; do
                 src=$(which "$tool" 2>/dev/null || true)
-                if [ -n "$src" ]; then
-                  cp "$src" /tools/
-                  chmod +x "/tools/$tool"
-                  echo "$tool → /tools/$tool"
-                else
-                  echo "WARNING: $tool not found in PATH after brew install"
+                if [ -z "$src" ]; then
+                  echo "WARNING: $tool not found after brew install"
+                  continue
                 fi
+
+                cp "$src" /tools/
+
+                # Copy all transitive shared library dependencies
+                ldd "$src" | grep "=> /" | awk '{print $3}' | while read lib; do
+                  cp -n "$lib" /tools/lib/ 2>/dev/null || true
+                done
+
+                # Copy the dynamic linker (interpreter)
+                interp=$(patchelf --print-interpreter "$src" 2>/dev/null || true)
+                if [ -n "$interp" ] && [ -f "$interp" ]; then
+                  cp -n "$interp" /tools/lib/ 2>/dev/null || true
+                  # Relink binary to use /tools/lib interpreter and rpath
+                  # so it is fully self-contained when copied to the main container
+                  patchelf \
+                    --set-interpreter "/tools/lib/$(basename "$interp")" \
+                    --set-rpath /tools/lib \
+                    "/tools/$tool"
+                fi
+
+                echo "$tool installed and relinked → /tools/$tool"
               done
           resources:
             requests:
