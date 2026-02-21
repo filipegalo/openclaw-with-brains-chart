@@ -4,6 +4,34 @@ entries:
   - annotations:
       artifacthub.io/changes: |-
         - kind: changed
+          description: "feat: replace init-tools apk/wget with homebrew/brew image"
+    apiVersion: v2
+    appVersion: 2026.2.17
+    created: "2026-02-21T19:03:28.751529478Z"
+    description: 'Helm chart for deploying OpenClaw with a git-backed brain repository.
+      Provides an AI agent gateway with bidirectional workspace and config synchronisation,
+      optional Chromium sidecar, GitHub CLI, and read-only Kubernetes cluster access
+      via ClusterRole. '
+    digest: 74d1dcaaed5e92d31d3ab89d0d6906324d183e3bd158edada6b5a8d32e21ad20
+    keywords:
+    - openclaw
+    - ai
+    - agent
+    - llm
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - email: fcostagalo@gmail.com
+      name: filipegalo
+    name: openclaw-with-brain
+    sources:
+    - https://github.com/filipegalo/openclaw-with-brains-chart
+    type: application
+    urls:
+    - https://github.com/filipegalo/openclaw-with-brains-chart/releases/download/openclaw-with-brain-0.1.10/openclaw-with-brain-0.1.10.tgz
+    version: 0.1.10
+  - annotations:
+      artifacthub.io/changes: |-
+        - kind: changed
           description: "docs: add migrating from existing openclaw setup section"
     apiVersion: v2
     appVersion: 2026.2.17
@@ -197,4 +225,4 @@ entries:
     urls:
     - https://github.com/filipegalo/openclaw-with-brains-chart/releases/download/openclaw-with-brain-0.1.2/openclaw-with-brain-0.1.2.tgz
     version: 0.1.2
-generated: "2026-02-21T18:12:24.926112037Z"
+generated: "2026-02-21T19:03:28.751555477Z"
