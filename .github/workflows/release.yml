@@ -215,6 +215,35 @@ jobs:
             --push
 
       # -----------------------------------------------------------------------
+      # Push artifacthub-repo.yml to gh-pages for verified publisher status
+      # Requires ARTIFACTHUB_REPO_ID secret (UUID from ArtifactHub control panel)
+      # -----------------------------------------------------------------------
+      - name: Push artifacthub-repo.yml to gh-pages
+        env:
+          ARTIFACTHUB_REPO_ID: ${{ secrets.ARTIFACTHUB_REPO_ID }}
+        run: |
+          if [ -z "$ARTIFACTHUB_REPO_ID" ]; then
+            echo "ARTIFACTHUB_REPO_ID secret not set — skipping verified publisher setup"
+            exit 0
+          fi
+          git fetch origin gh-pages
+          git checkout gh-pages
+          cat > artifacthub-repo.yml << EOF
+          repositoryID: ${ARTIFACTHUB_REPO_ID}
+          owners:
+            - name: filipegalo
+              email: fcostagalo@gmail.com
+          EOF
+          git add artifacthub-repo.yml
+          if git diff --cached --quiet; then
+            echo "artifacthub-repo.yml unchanged"
+          else
+            git commit -m "chore: update artifacthub-repo.yml"
+            git push origin gh-pages
+          fi
+          git checkout main
+
+      # -----------------------------------------------------------------------
       # Push OCI image to GHCR
       # -----------------------------------------------------------------------
       - name: Log in to GHCR
