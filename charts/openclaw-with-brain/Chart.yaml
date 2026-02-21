@@ -6,7 +6,7 @@ description: >
   synchronisation, optional Chromium sidecar, GitHub CLI, and read-only
   Kubernetes cluster access via ClusterRole.
 type: application
-version: 0.1.10
+version: 0.1.11
 appVersion: "2026.2.17"
 kubeVersion: ">=1.26.0-0"
 keywords:
@@ -22,4 +22,4 @@ maintainers:
 annotations:
   artifacthub.io/changes: |
     - kind: changed
-      description: "feat: replace init-tools apk/wget with homebrew/brew image"
+      description: "docs: add Cluster Access section, update config examples for tools.packages"
