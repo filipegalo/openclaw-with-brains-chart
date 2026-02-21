@@ -1,6 +1,6 @@
 # 🦞 OpenClaw Helm Chart with 🧠
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/filipegalo)](https://artifacthub.io/packages/helm/filipegalo/openclaw-with-brain)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/openclaw-with-brain)](https://artifacthub.io/packages/helm/openclaw-with-brain/openclaw-with-brain)
 [![Helm 3](https://img.shields.io/badge/Helm-3-0F1689?logo=helm&logoColor=white)](https://helm.sh)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-%3E%3D1.26-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io)
 ![AppVersion: 2026.2.17](https://img.shields.io/badge/AppVersion-2026.2.17-informational?style=flat-square)
