@@ -1,4 +1,4 @@
-# -- Override the chart name used in resource names and labels.
+# -- Override the chart name used in resource names and labels. Defaults to chart name.
 nameOverride: ""
 # -- Override the full resource name (overrides Release.Name + chart name).
 fullnameOverride: ""
