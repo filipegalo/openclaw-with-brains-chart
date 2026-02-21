@@ -1,0 +1,70 @@
+name: Bump OpenClaw Version
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # Daily at 6 AM UTC
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get latest OpenClaw version
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(gh api repos/openclaw/openclaw/releases/latest --jq '.tag_name' | sed 's/^v//')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Latest OpenClaw version: $version"
+
+      - name: Get current version
+        id: current
+        run: |
+          version=$(grep '^appVersion:' charts/openclaw-with-brain/Chart.yaml | awk '{print $2}' | tr -d '"')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Current version: $version"
+
+      - name: Check if update needed
+        id: check
+        run: |
+          if [ "${{ steps.latest.outputs.version }}" = "${{ steps.current.outputs.version }}" ]; then
+            echo "Already on latest version ${{ steps.current.outputs.version }}, skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Update needed: ${{ steps.current.outputs.version }} → ${{ steps.latest.outputs.version }}"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update Chart.yaml appVersion
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          sed -i 's/^appVersion: .*/appVersion: "${{ steps.latest.outputs.version }}"/' \
+            charts/openclaw-with-brain/Chart.yaml
+
+      - name: Update values.yaml image tag
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          old="${{ steps.current.outputs.version }}"
+          new="${{ steps.latest.outputs.version }}"
+          sed -i "s/tag: \"${old}\"/tag: \"${new}\"/" charts/openclaw-with-brain/values.yaml
+
+      - name: Commit
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          git add charts/openclaw-with-brain/Chart.yaml charts/openclaw-with-brain/values.yaml
+          git commit -m "chore: bump openclaw to ${{ steps.latest.outputs.version }}"
+          git push origin main
