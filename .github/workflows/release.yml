@@ -206,6 +206,7 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Update index on gh-pages
         run: |
+          mkdir -p .cr-index
           cr index \
             --owner "${{ github.repository_owner }}" \
             --git-repo "${{ github.event.repository.name }}" \
