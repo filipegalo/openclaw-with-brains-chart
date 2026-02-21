@@ -70,45 +70,35 @@ spec:
               mountPath: /home/node/.openclaw
         {{- end }}
 
-        {{- if or .Values.kubectlIntegration.enabled .Values.githubIntegration.enabled }}
+        {{- if .Values.tools.packages }}
         - name: init-tools
           image: "{{ .Values.tools.image.repository }}:{{ .Values.tools.image.tag }}"
+          env:
+            - name: TOOLS
+              value: {{ .Values.tools.packages | join " " | quote }}
           command:
-            - /bin/sh
+            - /bin/bash
             - -c
             - |
               set -e
-              {{- if .Values.kubectlIntegration.enabled }}
-              echo "Installing kubectl..."
-              KUBECTL_VER=$(wget -qO- https://dl.k8s.io/release/stable.txt)
-              wget -qO /tools/kubectl "https://dl.k8s.io/release/${KUBECTL_VER}/bin/linux/amd64/kubectl"
-              chmod +x /tools/kubectl
-              echo "kubectl ${KUBECTL_VER} installed"
-              {{- end }}
-              {{- if .Values.githubIntegration.enabled }}
-              echo "Installing gh..."
-              GH_VER=$(wget -qO- "https://api.github.com/repos/cli/cli/releases/latest" | grep '"tag_name"' | head -1 | cut -d'"' -f4 | cut -c2-)
-              wget -qO /tmp/gh.tar.gz "https://github.com/cli/cli/releases/download/v${GH_VER}/gh_${GH_VER}_linux_amd64.tar.gz"
-              tar -xzf /tmp/gh.tar.gz -C /tmp
-              cp /tmp/gh_*/bin/gh /tools/gh
-              chmod +x /tools/gh
-              echo "gh ${GH_VER} installed"
-              {{- end }}
-          securityContext:
-            runAsUser: 1000
-            runAsGroup: 1000
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+              brew install --quiet $TOOLS
+              for tool in $TOOLS; do
+                src=$(which "$tool" 2>/dev/null || true)
+                if [ -n "$src" ]; then
+                  cp "$src" /tools/
+                  chmod +x "/tools/$tool"
+                  echo "$tool → /tools/$tool"
+                else
+                  echo "WARNING: $tool not found in PATH after brew install"
+                fi
+              done
           resources:
             requests:
-              cpu: 50m
-              memory: 64Mi
+              cpu: 200m
+              memory: 512Mi
             limits:
-              cpu: 500m
-              memory: 256Mi
+              cpu: 1000m
+              memory: 1Gi
           volumeMounts:
             - name: tools-bin
               mountPath: /tools
@@ -128,7 +118,7 @@ spec:
             - --port
             - {{ .Values.gateway.port | quote }}
           {{- $envFrom := .Values.envFrom | default list }}
-          {{- if .Values.githubIntegration.enabled }}
+          {{- if has "gh" .Values.tools.packages }}
           {{- $envFrom = append $envFrom (dict "secretRef" (dict "name" .Values.githubIntegration.tokenSecret)) }}
           {{- end }}
           {{- if $envFrom }}

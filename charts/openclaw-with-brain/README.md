@@ -453,8 +453,7 @@ Kubernetes: `>=1.26.0-0`
 | gateway | object | `{"bind":"lan","port":18789}` | ------------------------------------------------------------------------- |
 | gateway.bind | string | `"lan"` | Network interface to bind. Use "lan" for cluster-internal access or    "0.0.0.0" to also expose outside the pod. |
 | gateway.port | int | `18789` | Port the OpenClaw gateway listens on. |
-| githubIntegration | object | `{"enabled":true,"tokenSecret":"openclaw-github-token"}` | ------------------------------------------------------------------------- |
-| githubIntegration.enabled | bool | `true` | Enable gh CLI download. |
+| githubIntegration | object | `{"tokenSecret":"openclaw-github-token"}` | ------------------------------------------------------------------------- |
 | githubIntegration.tokenSecret | string | `"openclaw-github-token"` | Name of the Kubernetes Secret containing a GITHUB_TOKEN field. |
 | image | object | `{"pullPolicy":"IfNotPresent","repository":"ghcr.io/openclaw/openclaw","tag":"2026.2.17"}` | ------------------------------------------------------------------------- |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. |
@@ -462,8 +461,6 @@ Kubernetes: `>=1.26.0-0`
 | image.tag | string | `"2026.2.17"` | OpenClaw container image tag. |
 | imagePullSecrets | list | `[]` | List of image pull secrets for private registries. |
 | ingress | object | `{"annotations":{},"className":"","enabled":false,"hosts":[],"tls":[]}` | ------------------------------------------------------------------------- |
-| kubectlIntegration | object | `{"enabled":true}` | ------------------------------------------------------------------------- |
-| kubectlIntegration.enabled | bool | `true` | Enable kubectl download and ClusterRole/Binding creation. |
 | nameOverride | string | `""` | Override the chart name used in resource names and labels. Defaults to chart name. |
 | networkPolicy | object | `{"egress":[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"namespaceSelector":{"matchLabels":{"kubernetes.io/metadata.name":"kube-system"}},"podSelector":{"matchLabels":{"k8s-app":"kube-dns"}}}]},{"to":[{"ipBlock":{"cidr":"0.0.0.0/0","except":["10.0.0.0/8","172.16.0.0/12","192.168.0.0/16","169.254.0.0/16","100.64.0.0/10"]}}]}],"enabled":false,"ingress":[{"from":[{"namespaceSelector":{"matchLabels":{"kubernetes.io/metadata.name":"ingress-nginx"}}}],"ports":[{"port":18789,"protocol":"TCP"}]}]}` | ------------------------------------------------------------------------- |
 | networkPolicy.egress | list | `[{"ports":[{"port":53,"protocol":"UDP"},{"port":53,"protocol":"TCP"}],"to":[{"namespaceSelector":{"matchLabels":{"kubernetes.io/metadata.name":"kube-system"}},"podSelector":{"matchLabels":{"k8s-app":"kube-dns"}}}]},{"to":[{"ipBlock":{"cidr":"0.0.0.0/0","except":["10.0.0.0/8","172.16.0.0/12","192.168.0.0/16","169.254.0.0/16","100.64.0.0/10"]}}]}]` | Egress rules. DNS + external internet (blocks RFC-1918 private ranges). |
@@ -479,9 +476,10 @@ Kubernetes: `>=1.26.0-0`
 | strategy | string | `"RollingUpdate"` | Deployment strategy. RollingUpdate is safe because volumes are emptyDir. |
 | telegramAllowFrom | list | `[]` | List of Telegram sender IDs allowed to interact with the bot. Example: telegramAllowFrom: ["123456789"] |
 | tolerations | list | `[]` |  |
-| tools | object | `{"image":{"repository":"alpine","tag":"3.21"}}` | ------------------------------------------------------------------------- |
-| tools.image.repository | string | `"alpine"` | Alpine image used by the init-tools container to download binaries. |
-| tools.image.tag | string | `"3.21"` | Alpine image tag. |
+| tools | object | `{"image":{"repository":"homebrew/brew","tag":"latest"},"packages":["kubectl","gh"]}` | ------------------------------------------------------------------------- |
+| tools.image.repository | string | `"homebrew/brew"` | Homebrew image used by the init-tools container to install binaries. |
+| tools.image.tag | string | `"latest"` | Homebrew image tag. |
+| tools.packages | list | `["kubectl","gh"]` | List of tools to install via brew. Binaries are copied to /tools (on PATH in main container). Special handling: kubectl also creates ClusterRole + ClusterRoleBinding. Special handling: gh also mounts githubIntegration.tokenSecret. |
 | workspace | object | `{"branch":"main","configPath":"openclaw.json","enabled":true,"gitUserEmail":"openclaw@example.com","gitUserName":"openclaw","image":{"repository":"alpine/git","tag":"2.47.2"},"path":"workspaces","repo":"","resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"add":["DAC_READ_SEARCH"],"drop":["ALL"]},"readOnlyRootFilesystem":false},"sshKeySecret":"openclaw-ssh-key","syncInterval":60}` | ------------------------------------------------------------------------- |
 | workspace.branch | string | `"main"` | Branch to clone and push to. |
 | workspace.configPath | string | `"openclaw.json"` | Path inside the repo to openclaw.json (synced both ways). |

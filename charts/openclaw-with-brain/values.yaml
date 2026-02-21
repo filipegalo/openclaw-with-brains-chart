@@ -19,32 +19,31 @@ image:
   pullPolicy: IfNotPresent
 
 # ---------------------------------------------------------------------------
-# Tools init-container image (used to download kubectl and/or gh)
+# Tools init-container
+# Installs binaries into /tools (added to PATH in the main container).
+# Built-in packages with dedicated handlers:
+#   kubectl  — downloads latest stable; also creates ClusterRole + ClusterRoleBinding
+#   gh       — downloads latest GitHub CLI; also mounts githubIntegration.tokenSecret
+# Any other name is installed via `apk add` and the binary is copied to /tools.
 # ---------------------------------------------------------------------------
 tools:
   image:
-    # -- Alpine image used by the init-tools container to download binaries.
-    repository: alpine
-    # -- Alpine image tag.
-    tag: "3.21"
-
-# ---------------------------------------------------------------------------
-# kubectl integration
-# Downloads the latest stable kubectl binary and places it on PATH.
-# Requires a ClusterRole + ClusterRoleBinding (created automatically).
-# ---------------------------------------------------------------------------
-kubectlIntegration:
-  # -- Enable kubectl download and ClusterRole/Binding creation.
-  enabled: true
+    # -- Homebrew image used by the init-tools container to install binaries.
+    repository: homebrew/brew
+    # -- Homebrew image tag.
+    tag: "latest"
+  # -- List of tools to install via brew. Binaries are copied to /tools (on PATH in main container).
+  # Special handling: kubectl also creates ClusterRole + ClusterRoleBinding.
+  # Special handling: gh also mounts githubIntegration.tokenSecret.
+  packages:
+    - kubectl
+    - gh
 
 # ---------------------------------------------------------------------------
 # GitHub CLI integration
-# Downloads the latest gh binary and places it on PATH.
-# Authenticate via the GITHUB_TOKEN env var supplied by githubIntegration.tokenSecret.
+# Required when gh is listed in tools.packages.
 # ---------------------------------------------------------------------------
 githubIntegration:
-  # -- Enable gh CLI download.
-  enabled: true
   # -- Name of the Kubernetes Secret containing a GITHUB_TOKEN field.
   tokenSecret: openclaw-github-token
 
