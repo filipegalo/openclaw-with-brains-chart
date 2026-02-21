@@ -4,6 +4,34 @@ entries:
   - annotations:
       artifacthub.io/changes: |-
         - kind: changed
+          description: "fix: use patchelf to relink brew binaries for main container"
+    apiVersion: v2
+    appVersion: 2026.2.17
+    created: "2026-02-21T19:39:55.782334716Z"
+    description: 'Helm chart for deploying OpenClaw with a git-backed brain repository.
+      Provides an AI agent gateway with bidirectional workspace and config synchronisation,
+      optional Chromium sidecar, GitHub CLI, and read-only Kubernetes cluster access
+      via ClusterRole. '
+    digest: 5d958716dd26e923191fa748318420f137b1f12cf77c894b7559c3ac8e9c6a31
+    keywords:
+    - openclaw
+    - ai
+    - agent
+    - llm
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - email: fcostagalo@gmail.com
+      name: filipegalo
+    name: openclaw-with-brain
+    sources:
+    - https://github.com/filipegalo/openclaw-with-brains-chart
+    type: application
+    urls:
+    - https://github.com/filipegalo/openclaw-with-brains-chart/releases/download/openclaw-with-brain-0.1.13/openclaw-with-brain-0.1.13.tgz
+    version: 0.1.13
+  - annotations:
+      artifacthub.io/changes: |-
+        - kind: changed
           description: "fix: correct ArtifactHub badge URL to openclaw-with-brain repository alias"
     apiVersion: v2
     appVersion: 2026.2.17
@@ -281,4 +309,4 @@ entries:
     urls:
     - https://github.com/filipegalo/openclaw-with-brains-chart/releases/download/openclaw-with-brain-0.1.2/openclaw-with-brain-0.1.2.tgz
     version: 0.1.2
-generated: "2026-02-21T19:26:39.782288466Z"
+generated: "2026-02-21T19:39:55.78237167Z"
