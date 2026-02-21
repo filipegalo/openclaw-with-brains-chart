@@ -4,6 +4,34 @@ entries:
   - annotations:
       artifacthub.io/changes: |-
         - kind: changed
+          description: "docs: fix ArtifactHub badge URL to use filipegalo as repository alias"
+    apiVersion: v2
+    appVersion: 2026.2.17
+    created: "2026-02-21T18:02:27.122670893Z"
+    description: 'Helm chart for deploying OpenClaw with a git-backed brain repository.
+      Provides an AI agent gateway with bidirectional workspace and config synchronisation,
+      optional Chromium sidecar, GitHub CLI, and read-only Kubernetes cluster access
+      via ClusterRole. '
+    digest: 7a0d2e7f789e03951a6e115e595f0cb745431cf40229cd794ab655877cc3059f
+    keywords:
+    - openclaw
+    - ai
+    - agent
+    - llm
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - email: fcostagalo@gmail.com
+      name: filipegalo
+    name: openclaw-with-brain
+    sources:
+    - https://github.com/filipegalo/openclaw-with-brains-chart
+    type: application
+    urls:
+    - https://github.com/filipegalo/openclaw-with-brains-chart/releases/download/openclaw-with-brain-0.1.8/openclaw-with-brain-0.1.8.tgz
+    version: 0.1.8
+  - annotations:
+      artifacthub.io/changes: |-
+        - kind: changed
           description: "docs: replace ASCII architecture diagram with arch.png"
     apiVersion: v2
     appVersion: 2026.2.17
@@ -197,4 +225,4 @@ entries:
     urls:
     - openclaw-with-brain-0.1.0.tgz
     version: 0.1.0
-generated: "2026-02-21T17:54:27.909743275Z"
+generated: "2026-02-21T18:02:27.122713753Z"
