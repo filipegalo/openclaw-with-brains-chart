@@ -153,6 +153,38 @@ git push -u origin main
 
 The agent will populate the workspace with its own files (MEMORY.md, daily logs, etc.) on first run — the sync sidecar will commit them back automatically.
 
+### Migrating from an Existing OpenClaw Setup
+
+If you already have OpenClaw running (e.g. locally or in another deployment), you can carry over its full state — personality, memory, config, and all agent workspaces — into the brain repo.
+
+OpenClaw stores everything under `~/.openclaw/` inside the container:
+
+| Container path | Brain repo path | Description |
+|---|---|---|
+| `~/.openclaw/openclaw.json` | `openclaw.json` (or `workspace.configPath`) | Main config |
+| `~/.openclaw/workspace/` | `workspaces/main/` (or `workspace.path/main/`) | Main agent workspace |
+| `~/.openclaw/workspace-<name>/` | `workspaces/<name>/` (or `workspace.path/<name>/`) | Additional agent workspaces |
+
+```bash
+# 1. Copy the files out of the running container
+kubectl cp <namespace>/<pod>:/home/node/.openclaw/openclaw.json ./openclaw.json
+kubectl cp <namespace>/<pod>:/home/node/.openclaw/workspace ./workspaces/main
+# Repeat for each additional agent workspace:
+kubectl cp <namespace>/<pod>:/home/node/.openclaw/workspace-myagent ./workspaces/myagent
+
+# 2. Or, if running OpenClaw locally (not on Kubernetes):
+cp ~/.openclaw/openclaw.json ./openclaw.json
+cp -r ~/.openclaw/workspace   ./workspaces/main
+cp -r ~/.openclaw/workspace-myagent ./workspaces/myagent
+
+# 3. Commit and push to your brain repo
+git add .
+git commit -m "chore: import existing openclaw state"
+git push -u origin main
+```
+
+On the next pod start, `init-workspace` will clone the repo and restore everything exactly as it was.
+
 ## How the Brain Sync Works
 
 ### Startup (init-workspace)
