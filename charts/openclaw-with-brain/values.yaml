@@ -158,7 +158,7 @@ workspace:
     # -- alpine/git image used for init-workspace and workspace-sync containers.
     repository: alpine/git
     # -- alpine/git image tag.
-    tag: "3.21.3"
+    tag: "2.47.2"
   resources:
     requests:
       cpu: 50m
