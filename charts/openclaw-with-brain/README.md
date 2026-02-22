@@ -514,14 +514,14 @@ Kubernetes: `>=1.26.0-0`
 | tools.image.repository | string | `"alpine"` | Alpine image used by the init-tools container (mise is bootstrapped at runtime). |
 | tools.image.tag | string | `"3.21"` | Alpine image tag. |
 | tools.packages | list | `["kubectl","gh"]` | List of tools to install via mise. Any tool supported by mise works here. See https://mise.jdx.dev/registry.html for the full list. |
-| workspace | object | `{"branch":"main","configPath":"openclaw.json","enabled":true,"gitUserEmail":"openclaw@example.com","gitUserName":"openclaw","image":{"repository":"alpine/git","tag":"2.47.2"},"path":"workspaces","repo":"","resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"add":["DAC_READ_SEARCH"],"drop":["ALL"]},"readOnlyRootFilesystem":false},"sshKeySecret":"openclaw-ssh-key","syncInterval":60}` | ------------------------------------------------------------------------- |
+| workspace | object | `{"branch":"main","configPath":"openclaw.json","enabled":true,"gitUserEmail":"openclaw@example.com","gitUserName":"openclaw","image":{"repository":"alpine/git","tag":"3.21.3"},"path":"workspaces","repo":"","resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"add":["DAC_READ_SEARCH"],"drop":["ALL"]},"readOnlyRootFilesystem":false},"sshKeySecret":"openclaw-ssh-key","syncInterval":60}` | ------------------------------------------------------------------------- |
 | workspace.branch | string | `"main"` | Branch to clone and push to. |
 | workspace.configPath | string | `"openclaw.json"` | Path inside the repo to openclaw.json (synced both ways). |
 | workspace.enabled | bool | `true` | Enable git-backed workspace sync. |
 | workspace.gitUserEmail | string | `"openclaw@example.com"` | Git committer email used by the sync sidecar. |
 | workspace.gitUserName | string | `"openclaw"` | Git committer name used by the sync sidecar. |
 | workspace.image.repository | string | `"alpine/git"` | alpine/git image used for init-workspace and workspace-sync containers. |
-| workspace.image.tag | string | `"2.47.2"` | alpine/git image tag. |
+| workspace.image.tag | string | `"3.21.3"` | alpine/git image tag. |
 | workspace.path | string | `"workspaces"` | Path inside the repo whose subdirectories map to OpenClaw workspaces.    Subdirectory "main" maps to ~/.openclaw/workspace,    any other subdirectory <id> maps to ~/.openclaw/workspace-<id>. |
 | workspace.repo | string | `""` | SSH URL of the brain repository. Required when workspace.enabled is true. |
 | workspace.sshKeySecret | string | `"openclaw-ssh-key"` | Name of the Kubernetes Secret containing the SSH private key.    The secret must have a field named "id_ed25519". |
