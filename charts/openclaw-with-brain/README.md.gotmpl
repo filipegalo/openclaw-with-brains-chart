@@ -25,7 +25,7 @@ Without the brain repo, OpenClaw works fine — but it forgets everything every 
 ## Features
 
 - **Git-backed brain** — workspaces and `openclaw.json` are cloned from your repo on startup and synced back every minute
-- **Plug-in tools** — install any CLI tool (e.g. `kubectl`, `gh`) via `tools.packages`; binaries land on `PATH` inside the main container
+- **Plug-in tools** — install any CLI tool via `tools.packages` using [mise](https://mise.jdx.dev); binaries land on `PATH` inside the main container with no per-tool configuration
 - **Headless Chromium** — optional sidecar for browser automation tasks
 - **Hardened security** — non-root (UID 1000), read-only root filesystem, all capabilities dropped
 
@@ -46,6 +46,25 @@ The ClusterRole is intentionally scoped to read-only verbs (`get`, `list`, `watc
 
 This is entirely opt-in — if `kubectl` is not in `tools.packages`, no RBAC resources are created.
 
+## Tool Installation — How `tools.packages` Works
+
+The `init-tools` init container uses **[mise](https://mise.jdx.dev)** — a polyglot tool version manager — to install any CLI tool by name and make it available on `PATH` inside the main container.
+
+```yaml
+tools:
+  packages:
+    - kubectl
+    - gh
+    - helm
+    - terraform
+    - jq
+```
+
+mise downloads the **official release binary** for each tool (same artifact you'd get from the project's own download page), so the binaries are compatible with the main container's libc. There is no per-tool logic in the chart — any tool in the [mise registry](https://mise.jdx.dev/registry.html) works out of the box.
+
+> **Why mise and not a system package manager?**
+> System package managers (apk, apt) link binaries against the container's own libc. Copying those binaries into the main container — which may use a different libc — causes silent runtime failures. mise downloads the portable, official release binaries that tool maintainers already ship for broad Linux compatibility.
+
 ## Architecture
 
 Single-instance deployment. Horizontal scaling is not supported — the data volume is `emptyDir` and state lives in Git.
@@ -55,7 +74,7 @@ Single-instance deployment. Horizontal scaling is not supported — the data vol
 | Component | Kind | Purpose |
 |-----------|------|---------|
 | `init-workspace` | Init container | Clones brain repo, restores config + workspaces |
-| `init-tools` | Init container | Downloads `kubectl` and/or `gh` binary |
+| `init-tools` | Init container | Installs tools from `tools.packages` via mise into `/tools` (on PATH) |
 | `main` | Container | OpenClaw gateway (HTTP/WebSocket) |
 | `workspace-sync` | Sidecar | Commits and pushes changes back to brain repo |
 | `chromium` | Sidecar (optional) | Headless browser on port `9222` |
