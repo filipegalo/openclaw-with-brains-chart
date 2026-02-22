@@ -76,6 +76,10 @@ spec:
           env:
             - name: TOOLS
               value: {{ .Values.tools.packages | join " " | quote }}
+          # Run as root so we can write to /tools.
+          # Brew itself is invoked via `su linuxbrew` because it refuses to run as root.
+          securityContext:
+            runAsUser: 0
           command:
             - /bin/bash
             - -c
@@ -83,11 +87,11 @@ spec:
               set -e
               mkdir -p /tools/lib
 
-              # patchelf is needed to relink binaries
-              brew install --quiet patchelf $TOOLS
+              # Install patchelf + requested tools as the linuxbrew user
+              su linuxbrew -c "brew install --quiet patchelf $TOOLS"
 
               for tool in $TOOLS; do
-                src=$(which "$tool" 2>/dev/null || true)
+                src=$(su linuxbrew -c "which $tool 2>/dev/null || true")
                 if [ -z "$src" ]; then
                   echo "WARNING: $tool not found after brew install"
                   continue
@@ -100,12 +104,11 @@ spec:
                   cp -n "$lib" /tools/lib/ 2>/dev/null || true
                 done
 
-                # Copy the dynamic linker (interpreter)
+                # Copy the dynamic linker and relink the binary so it is
+                # fully self-contained inside /tools (no Homebrew paths needed)
                 interp=$(patchelf --print-interpreter "$src" 2>/dev/null || true)
                 if [ -n "$interp" ] && [ -f "$interp" ]; then
                   cp -n "$interp" /tools/lib/ 2>/dev/null || true
-                  # Relink binary to use /tools/lib interpreter and rpath
-                  # so it is fully self-contained when copied to the main container
                   patchelf \
                     --set-interpreter "/tools/lib/$(basename "$interp")" \
                     --set-rpath /tools/lib \
