@@ -87,11 +87,12 @@ spec:
               set -e
               mkdir -p /tools/lib
 
-              # Install patchelf + requested tools as the linuxbrew user
-              su linuxbrew -c "brew install --quiet patchelf $TOOLS"
+              # Install patchelf + requested tools as the linuxbrew user.
+              # Use login shell (-) so Homebrew's PATH is set correctly.
+              su - linuxbrew -c "brew install --quiet patchelf $TOOLS"
 
               for tool in $TOOLS; do
-                src=$(su linuxbrew -c "which $tool 2>/dev/null || true")
+                src=$(su - linuxbrew -c "which $tool 2>/dev/null || true")
                 if [ -z "$src" ]; then
                   echo "WARNING: $tool not found after brew install"
                   continue
