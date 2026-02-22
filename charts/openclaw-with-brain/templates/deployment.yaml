@@ -76,55 +76,33 @@ spec:
           env:
             - name: TOOLS
               value: {{ .Values.tools.packages | join " " | quote }}
-          # Run as root so we can write to /tools.
-          # Brew itself is invoked via `su linuxbrew` because it refuses to run as root.
-          securityContext:
-            runAsUser: 0
           command:
-            - /bin/bash
+            - /bin/sh
             - -c
             - |
               set -e
-              mkdir -p /tools/lib
 
-              # Install patchelf + requested tools as the linuxbrew user.
-              # Use login shell (-) so Homebrew's PATH is set correctly.
-              su - linuxbrew -c "brew install --quiet patchelf $TOOLS"
+              # Install mise (musl build — works in Alpine)
+              apk add --no-cache curl ca-certificates
+              curl -sSf https://mise.run | sh
+              export PATH="/root/.local/bin:$PATH"
 
+              # Install each tool and copy its binary to /tools
               for tool in $TOOLS; do
-                src=$(su - linuxbrew -c "which $tool 2>/dev/null || true")
-                if [ -z "$src" ]; then
-                  echo "WARNING: $tool not found after brew install"
-                  continue
-                fi
-
-                cp "$src" /tools/
-
-                # Copy all transitive shared library dependencies
-                ldd "$src" | grep "=> /" | awk '{print $3}' | while read lib; do
-                  cp -n "$lib" /tools/lib/ 2>/dev/null || true
-                done
-
-                # Copy the dynamic linker and relink the binary so it is
-                # fully self-contained inside /tools (no Homebrew paths needed)
-                interp=$(patchelf --print-interpreter "$src" 2>/dev/null || true)
-                if [ -n "$interp" ] && [ -f "$interp" ]; then
-                  cp -n "$interp" /tools/lib/ 2>/dev/null || true
-                  patchelf \
-                    --set-interpreter "/tools/lib/$(basename "$interp")" \
-                    --set-rpath /tools/lib \
-                    "/tools/$tool"
-                fi
-
-                echo "$tool installed and relinked → /tools/$tool"
+                echo "Installing ${tool}..."
+                mise use --global "${tool}@latest"
+                bin=$(mise which "$tool")
+                cp "$bin" "/tools/${tool}"
+                chmod +x "/tools/${tool}"
+                echo "${tool} → /tools/${tool}"
               done
           resources:
             requests:
-              cpu: 200m
-              memory: 512Mi
+              cpu: 100m
+              memory: 128Mi
             limits:
-              cpu: 1000m
-              memory: 1Gi
+              cpu: 500m
+              memory: 512Mi
           volumeMounts:
             - name: tools-bin
               mountPath: /tools

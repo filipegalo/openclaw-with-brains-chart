@@ -431,8 +431,8 @@ workspace:
 
 tools:
   image:
-    repository: registry.internal.com/homebrew/brew
-    tag: "latest"
+    repository: registry.internal.com/alpine
+    tag: "3.21"
 
 chromium:
   image:
@@ -491,10 +491,10 @@ Kubernetes: `>=1.26.0-0`
 | strategy | string | `"RollingUpdate"` | Deployment strategy. RollingUpdate is safe because volumes are emptyDir. |
 | telegramAllowFrom | list | `[]` | List of Telegram sender IDs allowed to interact with the bot. Example: telegramAllowFrom: ["123456789"] |
 | tolerations | list | `[]` |  |
-| tools | object | `{"image":{"repository":"homebrew/brew","tag":"latest"},"packages":["kubectl","gh"]}` | ------------------------------------------------------------------------- |
-| tools.image.repository | string | `"homebrew/brew"` | Homebrew image used by the init-tools container to install binaries. |
-| tools.image.tag | string | `"latest"` | Homebrew image tag. |
-| tools.packages | list | `["kubectl","gh"]` | List of tools to install via brew. Binaries are copied to /tools (on PATH in main container). Special handling: kubectl also creates ClusterRole + ClusterRoleBinding. Special handling: gh also mounts githubIntegration.tokenSecret. |
+| tools | object | `{"image":{"repository":"alpine","tag":"3.21"},"packages":["kubectl","gh"]}` | ------------------------------------------------------------------------- |
+| tools.image.repository | string | `"alpine"` | Alpine image used by the init-tools container (mise is bootstrapped at runtime). |
+| tools.image.tag | string | `"3.21"` | Alpine image tag. |
+| tools.packages | list | `["kubectl","gh"]` | List of tools to install via mise. Any tool supported by mise works here. See https://mise.jdx.dev/registry.html for the full list. |
 | workspace | object | `{"branch":"main","configPath":"openclaw.json","enabled":true,"gitUserEmail":"openclaw@example.com","gitUserName":"openclaw","image":{"repository":"alpine/git","tag":"2.47.2"},"path":"workspaces","repo":"","resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"add":["DAC_READ_SEARCH"],"drop":["ALL"]},"readOnlyRootFilesystem":false},"sshKeySecret":"openclaw-ssh-key","syncInterval":60}` | ------------------------------------------------------------------------- |
 | workspace.branch | string | `"main"` | Branch to clone and push to. |
 | workspace.configPath | string | `"openclaw.json"` | Path inside the repo to openclaw.json (synced both ways). |

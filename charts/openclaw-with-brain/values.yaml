@@ -20,21 +20,21 @@ image:
 
 # ---------------------------------------------------------------------------
 # Tools init-container
-# Installs binaries into /tools (added to PATH in the main container).
-# Built-in packages with dedicated handlers:
-#   kubectl  — downloads latest stable; also creates ClusterRole + ClusterRoleBinding
-#   gh       — downloads latest GitHub CLI; also mounts githubIntegration.tokenSecret
-# Any other name is installed via `apk add` and the binary is copied to /tools.
+# Uses mise (https://mise.jdx.dev) to install any tool by name into /tools,
+# which is added to PATH in the main container.
+# mise downloads official release binaries — no per-tool logic in the template.
+# Supports hundreds of tools: kubectl, gh, helm, terraform, jq, etc.
+# Special: kubectl also creates ClusterRole + ClusterRoleBinding.
+# Special: gh also mounts githubIntegration.tokenSecret.
 # ---------------------------------------------------------------------------
 tools:
   image:
-    # -- Homebrew image used by the init-tools container to install binaries.
-    repository: homebrew/brew
-    # -- Homebrew image tag.
-    tag: "latest"
-  # -- List of tools to install via brew. Binaries are copied to /tools (on PATH in main container).
-  # Special handling: kubectl also creates ClusterRole + ClusterRoleBinding.
-  # Special handling: gh also mounts githubIntegration.tokenSecret.
+    # -- Alpine image used by the init-tools container (mise is bootstrapped at runtime).
+    repository: alpine
+    # -- Alpine image tag.
+    tag: "3.21"
+  # -- List of tools to install via mise. Any tool supported by mise works here.
+  # See https://mise.jdx.dev/registry.html for the full list.
   packages:
     - kubectl
     - gh
