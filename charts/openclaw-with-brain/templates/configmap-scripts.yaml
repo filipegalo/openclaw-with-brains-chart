@@ -124,6 +124,7 @@ data:
           agent_id="${ws_name#workspace-}"
         fi
         target="$CLONE_DIR/$WORKSPACES_PATH/$agent_id"
+        rm -rf "$target"
         mkdir -p "$target"
         cp -r "${ws_dir}." "$target/"
       done
