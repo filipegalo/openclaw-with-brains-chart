@@ -4,6 +4,44 @@ entries:
   - annotations:
       artifacthub.io/changes: |-
         - kind: changed
+          description: "chore: bump openclaw to 2026.3.2"
+        - kind: changed
+          description: "chore: bump openclaw to 2026.3.1"
+        - kind: changed
+          description: "chore: bump openclaw to 2026.2.26"
+        - kind: changed
+          description: "chore: bump openclaw to 2026.2.25"
+        - kind: changed
+          description: "chore: bump openclaw to 2026.2.24"
+        - kind: changed
+          description: "chore: bump openclaw to 2026.2.23"
+    apiVersion: v2
+    appVersion: 2026.3.2
+    created: "2026-03-04T01:39:16.027218885Z"
+    description: 'Helm chart for deploying OpenClaw with a git-backed brain repository.
+      Provides an AI agent gateway with bidirectional workspace and config synchronisation,
+      optional Chromium sidecar, GitHub CLI, and read-only Kubernetes cluster access
+      via ClusterRole. '
+    digest: ad41458749de3ad5d6c4dc9a2f4ff36abc45f5d91675714f1d41f3bb4da98454
+    keywords:
+    - openclaw
+    - ai
+    - agent
+    - llm
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - email: fcostagalo@gmail.com
+      name: filipegalo
+    name: openclaw-with-brain
+    sources:
+    - https://github.com/filipegalo/openclaw-with-brains-chart
+    type: application
+    urls:
+    - https://github.com/filipegalo/openclaw-with-brains-chart/releases/download/openclaw-with-brain-0.1.21/openclaw-with-brain-0.1.21.tgz
+    version: 0.1.21
+  - annotations:
+      artifacthub.io/changes: |-
+        - kind: changed
           description: "fix: mirror workspace to git clone on each sync cycle to propagate deletions"
         - kind: changed
           description: "chore: bump openclaw to 2026.2.22"
@@ -509,4 +547,4 @@ entries:
     urls:
     - https://github.com/filipegalo/openclaw-with-brains-chart/releases/download/openclaw-with-brain-0.1.2/openclaw-with-brain-0.1.2.tgz
     version: 0.1.2
-generated: "2026-02-23T19:23:15.097752758Z"
+generated: "2026-03-04T01:39:16.027365158Z"
