@@ -7,7 +7,7 @@ description: >
   Kubernetes cluster access via ClusterRole.
 type: application
 version: 0.1.21
-appVersion: "2026.3.2"
+appVersion: "2026.3.7"
 kubeVersion: ">=1.26.0-0"
 keywords:
   - openclaw
