@@ -3,8 +3,8 @@
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/openclaw-with-brain)](https://artifacthub.io/packages/helm/openclaw-with-brain/openclaw-with-brain)
 [![Helm 3](https://img.shields.io/badge/Helm-3-0F1689?logo=helm&logoColor=white)](https://helm.sh)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-%3E%3D1.26-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io)
-![AppVersion: 2026.4.1](https://img.shields.io/badge/AppVersion-2026.4.1-informational?style=flat-square)
-![Version: 0.1.32](https://img.shields.io/badge/Version-0.1.32-informational?style=flat-square)
+![AppVersion: 2026.4.2](https://img.shields.io/badge/AppVersion-2026.4.2-informational?style=flat-square)
+![Version: 0.1.33](https://img.shields.io/badge/Version-0.1.33-informational?style=flat-square)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Deploys [OpenClaw](https://github.com/openclaw/openclaw) — an autonomous AI assistant — on Kubernetes, wired to a **git-backed brain repository** for persistent workspaces and configuration across pod restarts.
@@ -489,10 +489,10 @@ Kubernetes: `>=1.26.0-0`
 | gateway.port | int | `18789` | Port the OpenClaw gateway listens on. |
 | githubIntegration | object | `{"tokenSecret":"openclaw-github-token"}` | ------------------------------------------------------------------------- |
 | githubIntegration.tokenSecret | string | `"openclaw-github-token"` | Name of the Kubernetes Secret containing a GITHUB_TOKEN field. |
-| image | object | `{"pullPolicy":"IfNotPresent","repository":"ghcr.io/openclaw/openclaw","tag":"2026.4.1"}` | ------------------------------------------------------------------------- |
+| image | object | `{"pullPolicy":"IfNotPresent","repository":"ghcr.io/openclaw/openclaw","tag":"2026.4.2"}` | ------------------------------------------------------------------------- |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. |
 | image.repository | string | `"ghcr.io/openclaw/openclaw"` | OpenClaw container image repository. |
-| image.tag | string | `"2026.4.1"` | OpenClaw container image tag. |
+| image.tag | string | `"2026.4.2"` | OpenClaw container image tag. |
 | imagePullSecrets | list | `[]` | List of image pull secrets for private registries. |
 | ingress | object | `{"annotations":{},"className":"","enabled":false,"hosts":[],"tls":[]}` | ------------------------------------------------------------------------- |
 | nameOverride | string | `""` | Override the chart name used in resource names and labels. Defaults to chart name. |
