@@ -6,7 +6,7 @@ description: >
   synchronisation, optional Chromium sidecar, GitHub CLI, and read-only
   Kubernetes cluster access via ClusterRole.
 type: application
-version: 0.1.38
+version: 0.1.39
 appVersion: "2026.4.12"
 kubeVersion: ">=1.26.0-0"
 keywords:
@@ -22,4 +22,4 @@ maintainers:
 annotations:
   artifacthub.io/changes: |
     - kind: changed
-      description: "chore: bump openclaw to 2026.4.11"
+      description: "chore: bump openclaw to 2026.4.12"
