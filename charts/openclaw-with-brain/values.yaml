@@ -14,7 +14,7 @@ image:
   # -- OpenClaw container image repository.
   repository: ghcr.io/openclaw/openclaw
   # -- OpenClaw container image tag.
-  tag: "2026.4.21"
+  tag: "2026.4.22"
   # -- Image pull policy.
   pullPolicy: IfNotPresent
 
