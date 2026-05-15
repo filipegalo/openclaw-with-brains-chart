@@ -4,6 +4,34 @@ entries:
   - annotations:
       artifacthub.io/changes: |-
         - kind: changed
+          description: "chore: bump openclaw to 2026.5.12"
+    apiVersion: v2
+    appVersion: 2026.5.12
+    created: "2026-05-15T08:43:34.423275484Z"
+    description: 'Helm chart for deploying OpenClaw with a git-backed brain repository.
+      Provides an AI agent gateway with bidirectional workspace and config synchronisation,
+      optional Chromium sidecar, GitHub CLI, and read-only Kubernetes cluster access
+      via ClusterRole. '
+    digest: 8771d97526560113d278a9eb11e66ea477283a70eeda14541ef126dc9f510a80
+    keywords:
+    - openclaw
+    - ai
+    - agent
+    - llm
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - email: fcostagalo@gmail.com
+      name: filipegalo
+    name: openclaw-with-brain
+    sources:
+    - https://github.com/filipegalo/openclaw-with-brains-chart
+    type: application
+    urls:
+    - https://github.com/filipegalo/openclaw-with-brains-chart/releases/download/openclaw-with-brain-0.1.54/openclaw-with-brain-0.1.54.tgz
+    version: 0.1.54
+  - annotations:
+      artifacthub.io/changes: |-
+        - kind: changed
           description: "chore: bump openclaw to 2026.5.7"
     apiVersion: v2
     appVersion: 2026.5.7
@@ -1443,4 +1471,4 @@ entries:
     urls:
     - https://github.com/filipegalo/openclaw-with-brains-chart/releases/download/openclaw-with-brain-0.1.2/openclaw-with-brain-0.1.2.tgz
     version: 0.1.2
-generated: "2026-05-08T07:23:30.178311231Z"
+generated: "2026-05-15T08:43:34.423517643Z"
